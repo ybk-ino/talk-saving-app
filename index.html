@@ -82,6 +82,22 @@
       background-clip: padding-box;
       -webkit-mask-image: -webkit-radial-gradient(white, black);
     }
+
+    /* ドラッグ＆ドロップ中のスタイル */
+    .draggable-item {
+      cursor: grab;
+      touch-action: none;
+    }
+    .draggable-item:active {
+      cursor: grabbing;
+    }
+    .dragging {
+      opacity: 0.4;
+      background: #e2e8f0 !important;
+    }
+    .drag-over {
+      border-top: 2px dashed #6366f1 !important;
+    }
   </style>
 </head>
 <body class="app-bg h-screen font-sans antialiased text-slate-800 flex items-center justify-center p-0 sm:p-4">
@@ -227,9 +243,12 @@
           <input type="text" id="inputMemberAvatarUrl" placeholder="または画像URLを入力" class="w-full bg-slate-50 rounded-lg p-2 mt-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
       </div>
-      <div class="flex items-center justify-end gap-2 mt-5">
-        <button onclick="closeMemberModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
-        <button onclick="saveMember()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+      <div class="flex items-center justify-between mt-5">
+        <button type="button" id="deleteMemberBtnInModal" onclick="deleteMemberFromModal()" class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg hidden">削除</button>
+        <div class="flex items-center gap-2 ml-auto">
+          <button onclick="closeMemberModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
+          <button onclick="saveMember()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+        </div>
       </div>
     </div>
   </div>
@@ -256,13 +275,17 @@
           <input type="number" id="inputEventCount" min="1" step="1" placeholder="例: 3" class="w-full bg-slate-50 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
       </div>
-      <div class="flex items-center justify-end gap-2 mt-5">
-        <button onclick="closeEventModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
-        <button onclick="saveEvent()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+      <div class="flex items-center justify-between mt-5">
+        <button type="button" id="deleteEventBtnInModal" onclick="deleteEventFromModal()" class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg hidden">削除</button>
+        <div class="flex items-center gap-2 ml-auto">
+          <button onclick="closeEventModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
+          <button onclick="saveEvent()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- メッセージ編集モーダル（削除ボタン付き） -->
   <div id="msgEditModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
     <div class="bg-white rounded-2xl w-full max-w-xs p-5 shadow-xl">
       <h3 class="text-base font-bold text-slate-800 mb-4">メッセージの編集</h3>
@@ -281,23 +304,17 @@
           <textarea id="editMsgText" rows="3" class="w-full bg-slate-50 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></textarea>
         </div>
       </div>
-      <div class="flex items-center justify-end gap-2 mt-5">
-        <button onclick="closeMsgEditModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
-        <button onclick="saveEditedMessage()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+      <div class="flex items-center justify-between mt-5">
+        <button onclick="deleteMessageFromModal()" class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg font-medium">削除</button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeMsgEditModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
+          <button onclick="saveEditedMessage()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- コンテキストメニュー（共通） -->
-  <div id="msgContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-32 overflow-hidden">
-    <button onclick="contextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
-    </button>
-    <button onclick="contextAction('delete')" class="w-full text-left px-3 py-2 hover:bg-red-50 flex items-center gap-2 text-red-600">
-      <i class="fa-solid fa-trash text-red-400 w-4"></i> 削除
-    </button>
-  </div>
-
+  <!-- メンバー用コンテキストメニュー -->
   <div id="memberContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden">
     <button onclick="memberContextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
@@ -307,6 +324,7 @@
     </button>
   </div>
 
+  <!-- イベント用コンテキストメニュー -->
   <div id="eventContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden">
     <button onclick="eventContextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
@@ -326,7 +344,6 @@
     let currentMemberId = null;
     let currentEventId = null;
     let senderMode = 'them';
-    let selectedMsgIdForContext = null;
     let selectedMemberIdForContext = null;
     let selectedEventIdForContext = null;
 
@@ -368,14 +385,84 @@
       menu.classList.toggle('hidden');
     }
 
-    // ==================== 順序入れ替え用関数（ボタン操作） ====================
-    function moveItem(list, index, direction) {
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= list.length) return;
-      const temp = list[index];
-      list[index] = list[targetIndex];
-      list[targetIndex] = temp;
-      saveData();
+    function closeAllContextMenus() {
+      const menu = document.getElementById('globalContextMenu');
+      if (menu) menu.classList.add('hidden');
+      const mMenu = document.getElementById('memberContextMenu');
+      if (mMenu) mMenu.classList.add('hidden');
+      const eMenu = document.getElementById('eventContextMenu');
+      if (eMenu) eMenu.classList.add('hidden');
+    }
+    document.addEventListener('click', () => closeAllContextMenus());
+
+    // ==================== ドラッグ＆ドロップ共通設定 ====================
+    let draggedId = null;
+
+    function setupDragAndDrop(element, id, listType) {
+      element.setAttribute('draggable', 'true');
+      element.classList.add('draggable-item');
+
+      element.addEventListener('dragstart', (e) => {
+        draggedId = id;
+        e.dataTransfer.setData('text/plain', id);
+        setTimeout(() => element.classList.add('dragging'), 0);
+      });
+
+      element.addEventListener('dragend', () => {
+        element.classList.remove('dragging');
+        draggedId = null;
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      });
+
+      element.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        element.classList.add('drag-over');
+      });
+
+      element.addEventListener('dragleave', () => {
+        element.classList.remove('drag-over');
+      });
+
+      element.addEventListener('drop', (e) => {
+        e.preventDefault();
+        element.classList.remove('drag-over');
+        if (!draggedId || draggedId === id) return;
+
+        if (listType === 'member') {
+          const fromIdx = membersData.findIndex(m => m.id === draggedId);
+          const toIdx = membersData.findIndex(m => m.id === id);
+          if (fromIdx !== -1 && toIdx !== -1) {
+            const [moved] = membersData.splice(fromIdx, 1);
+            membersData.splice(toIdx, 0, moved);
+            saveData();
+            renderMemberList(document.getElementById('searchMember').value.trim());
+          }
+        } else if (listType === 'event') {
+          const member = membersData.find(m => m.id === currentMemberId);
+          if (!member) return;
+          const fromIdx = member.events.findIndex(ev => ev.id === draggedId);
+          const toIdx = member.events.findIndex(ev => ev.id === id);
+          if (fromIdx !== -1 && toIdx !== -1) {
+            const [moved] = member.events.splice(fromIdx, 1);
+            member.events.splice(toIdx, 0, moved);
+            saveData();
+            renderEventList(document.getElementById('searchEvent').value.trim());
+          }
+        } else if (listType === 'message') {
+          const member = membersData.find(m => m.id === currentMemberId);
+          if (!member) return;
+          const event = member.events.find(ev => ev.id === currentEventId);
+          if (!event) return;
+          const fromIdx = event.messages.findIndex(m => m.id === draggedId);
+          const toIdx = event.messages.findIndex(m => m.id === id);
+          if (fromIdx !== -1 && toIdx !== -1) {
+            const [moved] = event.messages.splice(fromIdx, 1);
+            event.messages.splice(toIdx, 0, moved);
+            saveData();
+            renderChatMessages();
+          }
+        }
+      });
     }
 
     // ==================== メンバーリスト描画 ====================
@@ -389,22 +476,14 @@
         return;
       }
 
-      filtered.forEach((member, index) => {
-        // 元の配列全体でのインデックスを取得（並び替え用）
-        const realIndex = membersData.findIndex(m => m.id === member.id);
+      filtered.forEach((member) => {
         const item = document.createElement('div');
         item.className = 'py-3 px-3 flex items-center justify-between hover:bg-white/40 rounded-xl transition group';
+        setupDragAndDrop(item, member.id, 'member');
 
         item.innerHTML = `
           <div class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer" onclick="selectMember('${member.id}')">
-            <div class="flex flex-col gap-0.5 shrink-0" onclick="event.stopPropagation();">
-              <button onclick="moveItem(membersData, ${realIndex}, -1); renderMemberList(document.getElementById('searchMember').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === 0 ? 'disabled opacity-30' : ''}>
-                <i class="fa-solid fa-chevron-up"></i>
-              </button>
-              <button onclick="moveItem(membersData, ${realIndex}, 1); renderMemberList(document.getElementById('searchMember').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === membersData.length - 1 ? 'disabled opacity-30' : ''}>
-                <i class="fa-solid fa-chevron-down"></i>
-              </button>
-            </div>
+            <div class="text-slate-300 group-hover:text-slate-400 px-1"><i class="fa-solid fa-grip-vertical text-xs"></i></div>
             <img src="${member.avatar}" crossorigin="anonymous" class="w-12 h-12 rounded-full object-cover shrink-0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">
             <div class="truncate">
               <h3 class="text-base font-bold text-slate-800 truncate">${escapeHtml(member.name)}</h3>
@@ -442,22 +521,15 @@
         return;
       }
 
-      filtered.forEach((event, index) => {
-        const realIndex = member.events.findIndex(e => e.id === event.id);
+      filtered.forEach((event) => {
         const placeAndSection = [event.place, event.section].filter(Boolean).join(' ') || '場所未設定';
         const item = document.createElement('div');
         item.className = 'py-3.5 px-3 flex items-center justify-between hover:bg-white/40 rounded-xl transition group';
+        setupDragAndDrop(item, event.id, 'event');
 
         item.innerHTML = `
           <div class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer" onclick="selectEvent('${event.id}')">
-            <div class="flex flex-col gap-0.5 shrink-0" onclick="event.stopPropagation();">
-              <button onclick="moveItem(member.events, ${realIndex}, -1); renderEventList(document.getElementById('searchEvent').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === 0 ? 'disabled opacity-30' : ''}>
-                <i class="fa-solid fa-chevron-up"></i>
-              </button>
-              <button onclick="moveItem(member.events, ${realIndex}, 1); renderEventList(document.getElementById('searchEvent').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === member.events.length - 1 ? 'disabled opacity-30' : ''}>
-                <i class="fa-solid fa-chevron-down"></i>
-              </button>
-            </div>
+            <div class="text-slate-300 group-hover:text-slate-400 px-1"><i class="fa-solid fa-grip-vertical text-xs"></i></div>
             <div class="w-12 h-12 rounded-full bg-slate-200/80 shrink-0 flex flex-col items-center justify-center text-slate-600">
               <svg class="w-4 h-4 fill-current" viewBox="0 0 448 512">
                 <path d="M152 64H296V24C296 10.75 306.7 0 320 0C333.3 0 344 10.75 344 24V64H384C419.3 64 448 92.65 448 128V416C448 451.3 419.3 480 384 480H64C28.65 480 0 451.3 0 416V128C0 92.65 28.65 64 64 64H104V24C104 10.75 114.7 0 128 0C141.3 0 152 10.75 152 24V64ZM400 192H48V416C48 424.8 55.16 432 64 432H384C392.8 432 400 424.8 400 416V192ZM384 112H64C55.16 112 48 119.2 48 128V144H400V128C400 119.2 392.8 112 384 112Z"/>
@@ -516,31 +588,22 @@
         const isContinue = prev && prev.sender==='them' && msg.sender==='them';
         const msgEl = document.createElement('div');
         msgEl.className = 'group relative py-1';
+        setupDragAndDrop(msgEl, msg.id, 'message');
 
-        const actionButtonsHtml = `
-          <div class="absolute right-2 top-0 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 bg-white/90 px-1.5 py-0.5 rounded-full shadow-sm z-10">
-            <button onclick="moveItem(event.messages, ${index}, -1); renderChatMessages();" class="text-slate-500 hover:text-indigo-600 px-1 text-xs" ${index === 0 ? 'disabled style="opacity:0.2;"' : ''}><i class="fa-solid fa-arrow-up"></i></button>
-            <button onclick="moveItem(event.messages, ${index}, 1); renderChatMessages();" class="text-slate-500 hover:text-indigo-600 px-1 text-xs" ${index === event.messages.length - 1 ? 'disabled style="opacity:0.2;"' : ''}><i class="fa-solid fa-arrow-down"></i></button>
-            <button onclick="openContextMenu(event, '${msg.id}')" class="text-slate-500 hover:text-indigo-600 px-1 text-xs"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-          </div>
-        `;
-
+        let innerContent = '';
         if (msg.sender === 'topic') {
-          msgEl.innerHTML = `
-            ${actionButtonsHtml}
-            <div class="flex justify-center items-center my-1">
+          innerContent = `
+            <div class="flex justify-center items-center my-1 cursor-pointer" onclick="openMsgEditModal('${msg.id}')">
               <div class="topic-bubble text-xs py-1.5 px-4 w-fit max-w-[85%] text-center shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>
             </div>`;
         } else if (msg.sender === 'me') {
-          msgEl.innerHTML = `
-            ${actionButtonsHtml}
-            <div class="flex justify-end my-1">
+          innerContent = `
+            <div class="flex justify-end my-1 cursor-pointer" onclick="openMsgEditModal('${msg.id}')">
               <div class="w-fit max-w-[75%] bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tr-none shadow-sm text-left chat-bubble-text">${escapeHtml(msg.text)}</div>
             </div>`;
         } else {
-          msgEl.innerHTML = `
-            ${actionButtonsHtml}
-            <div class="flex items-start my-1 gap-2">
+          innerContent = `
+            <div class="flex items-start my-1 gap-2 cursor-pointer" onclick="openMsgEditModal('${msg.id}')">
               ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5">`}
               <div class="w-fit max-w-[75%]">
                 ${isContinue ? '' : `<div class="text-[11px] text-slate-500 mb-0.5 ml-1 font-medium">${escapeHtml(member.name)}</div>`}
@@ -548,6 +611,11 @@
               </div>
             </div>`;
         }
+
+        msgEl.innerHTML = `
+          <div class="absolute left-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-slate-300 px-1 pointer-events-none"><i class="fa-solid fa-grip-vertical text-xs"></i></div>
+          ${innerContent}
+        `;
         messagesContainer.appendChild(msgEl);
       });
 
@@ -555,7 +623,53 @@
       updateSenderToggleUI();
     }
 
-    // Modal & Context Menus Control
+    // Context Menu Functions for Member & Event
+    function openMemberContextMenu(e, memberId) {
+      e.stopPropagation();
+      closeAllContextMenus();
+      selectedMemberIdForContext = memberId;
+      const menu = document.getElementById('memberContextMenu');
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 140)}px`;
+      menu.style.top = `${e.clientY + 10}px`;
+      menu.classList.remove('hidden');
+    }
+
+    function openEventContextMenu(e, eventId) {
+      e.stopPropagation();
+      closeAllContextMenus();
+      selectedEventIdForContext = eventId;
+      const menu = document.getElementById('eventContextMenu');
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 140)}px`;
+      menu.style.top = `${e.clientY + 10}px`;
+      menu.classList.remove('hidden');
+    }
+
+    function memberContextAction(type) {
+      closeAllContextMenus();
+      if (type === 'edit') openMemberModal(selectedMemberIdForContext);
+      if (type === 'delete') {
+        if (confirm('このメンバーを削除しますか？')) {
+          membersData = membersData.filter(m => m.id !== selectedMemberIdForContext);
+          saveData();
+          renderMemberList();
+        }
+      }
+    }
+
+    function eventContextAction(type) {
+      closeAllContextMenus();
+      if (type === 'edit') openEventModal(selectedEventIdForContext);
+      if (type === 'delete') {
+        if (confirm('このイベントを削除しますか？')) {
+          const member = membersData.find(m => m.id === currentMemberId);
+          member.events = member.events.filter(e => e.id !== selectedEventIdForContext);
+          saveData();
+          renderEventList();
+        }
+      }
+    }
+
+    // Modal Controls
     function openMemberModal(memberId = null) {
       const modal = document.getElementById('memberModal');
       const title = document.getElementById('memberModalTitle');
@@ -564,6 +678,7 @@
       const roleInput = document.getElementById('inputMemberRole');
       const urlInput = document.getElementById('inputMemberAvatarUrl');
       const fileInput = document.getElementById('inputMemberFile');
+      const deleteBtn = document.getElementById('deleteMemberBtnInModal');
 
       fileInput.value = '';
       if (memberId) {
@@ -573,12 +688,14 @@
         nameInput.value = member.name;
         roleInput.value = member.role;
         urlInput.value = member.avatar;
+        if (deleteBtn) deleteBtn.classList.add('hidden');
       } else {
         title.textContent = 'メンバー追加';
         editId.value = '';
         nameInput.value = '';
         roleInput.value = '';
         urlInput.value = '';
+        if (deleteBtn) deleteBtn.classList.add('hidden');
       }
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -625,10 +742,12 @@
       }
     }
 
-    function deleteMember(memberId) {
-      if (!confirm('このメンバーを削除しますか？')) return;
-      membersData = membersData.filter(m => m.id !== memberId);
+    function deleteMemberFromModal() {
+      const editId = document.getElementById('editMemberId').value;
+      if (!editId || !confirm('このメンバーを削除しますか？')) return;
+      membersData = membersData.filter(m => m.id !== editId);
       saveData();
+      closeMemberModal();
       renderMemberList();
     }
 
@@ -640,6 +759,7 @@
       const placeInput = document.getElementById('inputEventPlace');
       const sectionInput = document.getElementById('inputEventSection');
       const countInput = document.getElementById('inputEventCount');
+      const deleteBtn = document.getElementById('deleteEventBtnInModal');
 
       if (eventId) {
         const member = membersData.find(m => m.id === currentMemberId);
@@ -650,6 +770,7 @@
         placeInput.value = event.place || '';
         sectionInput.value = event.section || '';
         countInput.value = event.count || '';
+        if (deleteBtn) deleteBtn.classList.add('hidden');
       } else {
         title.textContent = 'イベント追加';
         editId.value = '';
@@ -658,6 +779,7 @@
         placeInput.value = '';
         sectionInput.value = '';
         countInput.value = '';
+        if (deleteBtn) deleteBtn.classList.add('hidden');
       }
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -688,21 +810,14 @@
       renderEventList();
     }
 
-    function deleteEvent(eventId) {
-      if (!confirm('このイベントを削除しますか？')) return;
+    function deleteEventFromModal() {
+      const editId = document.getElementById('editEventId').value;
+      if (!editId || !confirm('このイベントを削除しますか？')) return;
       const member = membersData.find(m => m.id === currentMemberId);
-      member.events = member.events.filter(e => e.id !== eventId);
+      member.events = member.events.filter(e => e.id !== editId);
       saveData();
+      closeEventModal();
       renderEventList();
-    }
-
-    function deleteMessage(msgId) {
-      if (!confirm('このメッセージを削除しますか？')) return;
-      const member = membersData.find(m => m.id === currentMemberId);
-      const event = member.events.find(e => e.id === currentEventId);
-      event.messages = event.messages.filter(m => m.id !== msgId);
-      saveData();
-      renderChatMessages();
     }
 
     function openMsgEditModal(msgId) {
@@ -743,61 +858,16 @@
       }
     }
 
-    // Context Menus
-    function openContextMenu(e, msgId) {
-      e.stopPropagation();
-      closeAllContextMenus();
-      selectedMsgIdForContext = msgId;
-      const menu = document.getElementById('msgContextMenu');
-      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 130)}px`;
-      menu.style.top = `${e.clientY + 10}px`;
-      menu.classList.remove('hidden');
+    function deleteMessageFromModal() {
+      const msgId = document.getElementById('editMsgId').value;
+      if (!msgId || !confirm('このメッセージを削除しますか？')) return;
+      const member = membersData.find(m => m.id === currentMemberId);
+      const event = member.events.find(e => e.id === currentEventId);
+      event.messages = event.messages.filter(m => m.id !== msgId);
+      saveData();
+      closeMsgEditModal();
+      renderChatMessages();
     }
-
-    function openMemberContextMenu(e, memberId) {
-      e.stopPropagation();
-      closeAllContextMenus();
-      selectedMemberIdForContext = memberId;
-      const menu = document.getElementById('memberContextMenu');
-      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 140)}px`;
-      menu.style.top = `${e.clientY + 10}px`;
-      menu.classList.remove('hidden');
-    }
-
-    function openEventContextMenu(e, eventId) {
-      e.stopPropagation();
-      closeAllContextMenus();
-      selectedEventIdForContext = eventId;
-      const menu = document.getElementById('eventContextMenu');
-      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 140)}px`;
-      menu.style.top = `${e.clientY + 10}px`;
-      menu.classList.remove('hidden');
-    }
-
-    function closeAllContextMenus() {
-      document.getElementById('msgContextMenu').classList.add('hidden');
-      document.getElementById('memberContextMenu').classList.add('hidden');
-      document.getElementById('eventContextMenu').classList.add('hidden');
-      document.getElementById('globalContextMenu').classList.add('hidden');
-    }
-
-    function contextAction(type) {
-      closeAllContextMenus();
-      if (type === 'edit') openMsgEditModal(selectedMsgIdForContext);
-      if (type === 'delete') deleteMessage(selectedMsgIdForContext);
-    }
-    function memberContextAction(type) {
-      closeAllContextMenus();
-      if (type === 'edit') openMemberModal(selectedMemberIdForContext);
-      if (type === 'delete') deleteMember(selectedMemberIdForContext);
-    }
-    function eventContextAction(type) {
-      closeAllContextMenus();
-      if (type === 'edit') openEventModal(selectedEventIdForContext);
-      if (type === 'delete') deleteEvent(selectedEventIdForContext);
-    }
-
-    document.addEventListener('click', () => closeAllContextMenus());
 
     function toggleSenderMode() {
       if (senderMode === 'them') senderMode = 'me';
