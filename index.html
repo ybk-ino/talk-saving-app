@@ -139,7 +139,7 @@
 
       <!-- メンバー一覧 -->
       <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="memberList">
-        <!-- JSで動적描画 -->
+        <!-- JSで動的描画 -->
       </div>
     </div>
 
@@ -328,21 +328,14 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 mt-5">
-        <button onclick="closeMsgEditModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
-        <button onclick="saveEditedMessage()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+      <div class="flex items-center justify-between mt-5">
+        <button onclick="deleteMessageFromModal()" class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg font-medium transition">削除する</button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeMsgEditModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">キャンセル</button>
+          <button onclick="saveEditedMessage()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">保存</button>
+        </div>
       </div>
     </div>
-  </div>
-
-  <!-- コンテキストメニュー（メッセージ用） -->
-  <div id="msgContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-32 overflow-hidden select-none">
-    <button onclick="contextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
-    </button>
-    <button onclick="contextAction('delete')" class="w-full text-left px-3 py-2 hover:bg-red-50 flex items-center gap-2 text-red-600">
-      <i class="fa-solid fa-trash text-red-400 w-4"></i> 削除
-    </button>
   </div>
 
   <!-- コンテキストメニュー（メンバーリスト用） -->
@@ -469,7 +462,6 @@
           </div>
         `;
 
-        // クリックイベントの代替（ドラッグと誤爆しないための制御）
         item.addEventListener('click', (e) => {
           if (item.dataset.hasDragged === 'true') return;
           if (e.target.closest('button')) return;
@@ -813,24 +805,21 @@
           dragElement.classList.add('dragging');
           dragElement.dataset.hasDragged = 'true';
 
-          // 触覚フィードバック（対応デバイスのみ）
           if (navigator.vibrate) {
             navigator.vibrate(50);
           }
-        }, 350); // 350ms長押しで「持った」状態に
+        }, 350);
       };
 
-      // マウスイベント
       element.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return; // 左クリックのみ
-        if (e.target.closest('button')) return; // ボタン押下時は除外
+        if (e.button !== 0) return;
+        if (e.target.closest('button')) return;
         startX = e.clientX;
         startY = e.clientY;
         element.dataset.hasDragged = 'false';
         startDragHandler(e.clientX, e.clientY, element);
       });
 
-      // タッチイベント
       element.addEventListener('touchstart', (e) => {
         if (e.target.closest('button')) return;
         const touch = e.touches[0];
@@ -841,7 +830,6 @@
       }, { passive: true });
     }
 
-    // グローバルなマウス・タッチ移動・終了監視
     window.addEventListener('mousemove', (e) => {
       handleMove(e.clientX, e.clientY, e.target);
     });
@@ -855,7 +843,7 @@
         }
       }
       if (isDragging && e.touches[0]) {
-        e.preventDefault(); // スクロールを抑制してドラッグに集中
+        e.preventDefault();
         handleMove(e.touches[0].clientX, e.touches[0].clientY, document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY));
       }
     }, { passive: false });
@@ -880,10 +868,8 @@
       }
 
       if (isDragging && dragElement) {
-        // 最も近いdraggable-item要素を特定
         const itemContainer = targetUnderCursor ? targetUnderCursor.closest('.draggable-item') : null;
         
-        // すべてのインジケーターをクリア
         document.querySelectorAll('.draggable-item').forEach(el => {
           el.classList.remove('drag-over-top', 'drag-over-bottom');
         });
@@ -920,7 +906,6 @@
           el.classList.remove('drag-over-top', 'drag-over-bottom');
         });
 
-        // クリックイベントの誤発火を防ぐフラグの保持と後始末
         setTimeout(() => {
           if (dragElement) dragElement.dataset.hasDragged = 'false';
           dragElement = null;
@@ -1034,19 +1019,9 @@
     }
 
     function closeAllContextMenus() {
-      document.getElementById('msgContextMenu').classList.add('hidden');
       document.getElementById('memberContextMenu').classList.add('hidden');
       document.getElementById('eventContextMenu').classList.add('hidden');
       document.getElementById('globalContextMenu').classList.add('hidden');
-    }
-
-    function contextAction(type) {
-      if (!selectedMsgIdForContext) return;
-      const msgId = selectedMsgIdForContext;
-      closeAllContextMenus();
-
-      if (type === 'edit') openMsgEditModal(msgId);
-      else if (type === 'delete') deleteMessage(msgId);
     }
 
     function memberContextAction(type) {
@@ -1074,13 +1049,11 @@
     }
 
     document.addEventListener('click', (e) => {
-      const msgMenu = document.getElementById('msgContextMenu');
       const memberMenu = document.getElementById('memberContextMenu');
       const eventMenu = document.getElementById('eventContextMenu');
       const globalMenu = document.getElementById('globalContextMenu');
 
-      if ((msgMenu && !msgMenu.contains(e.target)) &&
-          (memberMenu && !memberMenu.contains(e.target)) &&
+      if ((memberMenu && !memberMenu.contains(e.target)) &&
           (eventMenu && !eventMenu.contains(e.target)) &&
           (globalMenu && !globalMenu.contains(e.target))) {
         closeAllContextMenus();
@@ -1094,6 +1067,20 @@
 
       event.messages = event.messages.filter(m => m.id !== msgId);
       saveData();
+      renderChatMessages();
+    }
+
+    function deleteMessageFromModal() {
+      const msgId = document.getElementById('editMsgId').value;
+      if (!msgId) return;
+      if (!confirm('このメッセージを削除しますか？')) return;
+
+      const member = membersData.find(m => m.id === currentMemberId);
+      const event = member.events.find(e => e.id === currentEventId);
+
+      event.messages = event.messages.filter(m => m.id !== msgId);
+      saveData();
+      closeMsgEditModal();
       renderChatMessages();
     }
 
@@ -1250,6 +1237,37 @@
     document.getElementById('searchEvent').addEventListener('input', (e) => {
       renderEventList(e.target.value.trim());
     });
+
+    function exportChatImage() {
+      const captureArea = document.getElementById('captureArea');
+      if (!captureArea) return;
+
+      showToast('画像を生成中...');
+
+      htmlToImage.toPng(captureArea, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim() || '#f1f0e8'
+      })
+      .then((dataUrl) => {
+        hideToast();
+        const modal = document.getElementById('imagePreviewModal');
+        const imgEl = document.getElementById('previewImageElement');
+        imgEl.src = dataUrl;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      })
+      .catch((error) => {
+        hideToast();
+        alert('画像の生成に失敗しました。');
+      });
+    }
+
+    function closeImagePreviewModal() {
+      const modal = document.getElementById('imagePreviewModal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+    }
 
     renderMemberList();
   </script>
