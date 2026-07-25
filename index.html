@@ -223,7 +223,6 @@
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
-      <!-- 画像がコンテナ内に収まるように変更（object-contain, max-h-full, max-w-full） -->
       <div class="flex-1 bg-slate-100 rounded-xl p-2 flex items-center justify-center min-h-0 overflow-hidden">
         <img id="previewImageElement" src="" alt="Generated Chat Image" class="max-w-full max-h-full rounded shadow object-contain" style="-webkit-touch-callout: default !important; -webkit-user-select: auto !important; user-select: auto !important; touch-action: auto !important; pointer-events: auto !important;">
       </div>
@@ -618,7 +617,7 @@
         } else {
           innerContent = `
             <div class="flex-1 w-full flex items-start my-0.5 gap-2">
-              ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5">`}
+              ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">`}
               <div class="w-fit max-w-[75%]">
                 ${isContinue ? '' : `<div class="text-[11px] text-slate-500 mb-0.5 ml-1 font-medium">${escapeHtml(member.name)}</div>`}
                 <div class="bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tl-none shadow-sm chat-bubble-text cursor-pointer" onclick="openMsgActionMenu(event, '${msg.id}')">${escapeHtml(msg.text)}</div>
@@ -1015,44 +1014,56 @@
 
       showToast('画像を生成中...');
 
-      const origMainHeight = mainAppContainer.style.height;
-      const origScreenHeight = chatScreen.style.height;
-      const origCaptureHeight = captureElement.style.height;
-      const origMsgHeight = messagesContainer.style.height;
-      const origMsgOverflow = messagesContainer.style.overflow;
+      // キャプチャエリア内のすべての画像（アイコン等）が確実にロード完了しているかチェック
+      const images = captureElement.querySelectorAll('img');
+      const imagePromises = Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      });
 
-      mainAppContainer.style.height = 'auto';
-      chatScreen.style.height = 'auto';
-      captureElement.style.height = 'auto';
-      messagesContainer.style.height = messagesContainer.scrollHeight + 'px';
-      messagesContainer.style.overflow = 'visible';
+      Promise.all(imagePromises).then(() => {
+        const origMainHeight = mainAppContainer.style.height;
+        const origScreenHeight = chatScreen.style.height;
+        const origCaptureHeight = captureElement.style.height;
+        const origMsgHeight = messagesContainer.style.height;
+        const origMsgOverflow = messagesContainer.style.overflow;
 
-      setTimeout(() => {
-        htmlToImage.toPng(captureElement, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: '' })
-          .then((dataUrl) => {
-            mainAppContainer.style.height = origMainHeight;
-            chatScreen.style.height = origScreenHeight;
-            captureElement.style.height = origCaptureHeight;
-            messagesContainer.style.height = origMsgHeight;
-            messagesContainer.style.overflow = origMsgOverflow;
+        mainAppContainer.style.height = 'auto';
+        chatScreen.style.height = 'auto';
+        captureElement.style.height = 'auto';
+        messagesContainer.style.height = messagesContainer.scrollHeight + 'px';
+        messagesContainer.style.overflow = 'visible';
 
-            hideToast();
-            const modal = document.getElementById('imagePreviewModal');
-            document.getElementById('previewImageElement').src = dataUrl;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-          })
-          .catch(() => {
-            mainAppContainer.style.height = origMainHeight;
-            chatScreen.style.height = origScreenHeight;
-            captureElement.style.height = origCaptureHeight;
-            messagesContainer.style.height = origMsgHeight;
-            messagesContainer.style.overflow = origMsgOverflow;
-            hideToast();
-            showToast('画像の保存に失敗しました');
-            setTimeout(hideToast, 2000);
-          });
-      }, 200);
+        setTimeout(() => {
+          htmlToImage.toPng(captureElement, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: '' })
+            .then((dataUrl) => {
+              mainAppContainer.style.height = origMainHeight;
+              chatScreen.style.height = origScreenHeight;
+              captureElement.style.height = origCaptureHeight;
+              messagesContainer.style.height = origMsgHeight;
+              messagesContainer.style.overflow = origMsgOverflow;
+
+              hideToast();
+              const modal = document.getElementById('imagePreviewModal');
+              document.getElementById('previewImageElement').src = dataUrl;
+              modal.classList.remove('hidden');
+              modal.classList.add('flex');
+            })
+            .catch(() => {
+              mainAppContainer.style.height = origMainHeight;
+              chatScreen.style.height = origScreenHeight;
+              captureElement.style.height = origCaptureHeight;
+              messagesContainer.style.height = origMsgHeight;
+              messagesContainer.style.overflow = origMsgOverflow;
+              hideToast();
+              showToast('画像の保存に失敗しました');
+              setTimeout(hideToast, 2000);
+            });
+        }, 200);
+      });
     }
 
     function closeImagePreviewModal() {
