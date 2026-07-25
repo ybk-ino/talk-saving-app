@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="apple-touch-icon" href="./icon.png">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -140,13 +141,13 @@
     <!-- ==================== 画面3：トークルーム ==================== -->
     <div id="screen-chat" class="screen">
       <!-- ヘッダー -->
-      <div class="p-4 flex items-center justify-between bg-transparent shrink-0 relative">
+      <div class="p-4 flex items-center justify-between relative">
         <button onclick="switchScreen('screen-events')" class="text-slate-600 hover:text-slate-900 text-lg px-2">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
         <!-- タイトル部分：text-xlに拡大 -->
-        <h1 class="text-xl font-bold text-slate-800 absolute left-1/2 -translate-x-1/2" id="chatScreenTitle">トークルーム</h1>
-        <button onclick="exportChatImage()" class="text-slate-600 hover:text-slate-900 text-base px-2" aria-label="トーク画像を保存">
+        <h1 class="text-lg font-bold text-slate-800 absolute left-1/2 -translate-x-1/2" id="chatScreenTitle">トークルーム</h1>
+        <button onclick="exportChatImage()" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-600 hover:bg-white/70 hover:text-slate-900 transition" aria-label="トーク画像を保存">
           <i class="fa-solid fa-camera"></i>
         </button>
       </div>
@@ -163,8 +164,8 @@
               </svg>
             </div>
             <div class="min-w-0">
-              <div class="text-xs font-bold text-slate-800 truncate" id="chatEventDate">2026-04-29</div>
-              <div class="text-[11px] text-slate-500 truncate" id="chatEventPlace">幕張メッセ 第1部</div>
+              <div class="text-sm font-bold text-slate-800 truncate" id="chatEventDate">2026-04-29</div>
+              <div class="text-xs text-slate-500 truncate" id="chatEventPlace">幕張メッセ 第1部</div>
             </div>
           </div>
           <div id="chatEventCount" class="text-right text-xs shrink-0 leading-tight hidden"></div>
@@ -192,6 +193,26 @@
       </div>
     </div>
 
+  </div>
+
+<!-- 画像プレビュー・保存モーダル（別タブを開かないための内蔵モーダル） -->
+  <div id="imagePreviewModal" class="fixed inset-0 bg-black/80 hidden flex-col items-center justify-center p-2 sm:p-4 z-50">
+    <div class="bg-white rounded-2xl w-full max-w-sm h-[90vh] p-4 flex flex-col shadow-2xl relative">
+      <div class="flex items-center justify-between mb-2 shrink-0">
+        <h3 class="text-sm font-bold text-slate-800">トーク画像（長押しで保存）</h3>
+        <button onclick="closeImagePreviewModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p class="text-[11px] text-slate-500 mb-2 text-center shrink-0">画像を長押しして परिचालनするデバイスに合わせて保存してください。</p>
+      
+      <!-- スクロールして全体を確認できるプレビュー領域 -->
+      <div class="flex-1 overflow-y-auto bg-slate-100 rounded-xl p-2 flex justify-center min-h-0">
+        <img id="previewImageElement" src="" alt="Generated Chat Image" class="w-full h-auto rounded shadow object-contain select-none pointer-events-auto">
+      </div>
+
+      <button onclick="closeImagePreviewModal()" class="mt-3 shrink-0 w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold">閉じる</button>
+    </div>
   </div>
 
   <!-- モーダル：メンバー追加・編集 -->
@@ -574,7 +595,7 @@
                   ${event.count ? `<span class="bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md"><i class="fa-solid fa-ticket text-[10px] mr-1"></i>${escapeHtml(event.count)}枚</span>` : ''}
                 </div>
               </div>
-              <p class="text-xs text-slate-500 truncate">${event.place ? '<i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>' : ''}${escapeHtml(placeAndSection)}</p>
+              <p class="text-sm text-slate-600 truncate">${event.place ? '<i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>' : ''}${escapeHtml(placeAndSection)}</p>
             </div>
           </div>
           <div class="flex items-center gap-1.5 ml-2 shrink-0">
@@ -799,23 +820,14 @@
             messagesContainer.style.height = origMsgHeight;
             messagesContainer.style.overflow = origMsgOverflow;
 
-            // iPhoneのSafariでも確実にアルバム保存できるように画像を別タブで開く
-            const newWindow = window.open(dataUrl, '_blank');
-            if (!newWindow) {
-              // ポップアップがブロックされた場合のフォールバック
-              const link = document.createElement('a');
-              const member = membersData.find(m => m.id === currentMemberId);
-              const event = member ? member.events.find(e => e.id === currentEventId) : null;
-              const dateStr = event && event.date ? event.date : 'talk';
-              const memberName = member && member.name ? member.name : 'member';
+            hideToast();
 
-              link.download = `${memberName}_${dateStr}.png`;
-              link.href = dataUrl;
-              link.click();
-            }
-
-            showToast('画像を別タブで開きました（長押しで保存）');
-            setTimeout(hideToast, 3000);
+            // アプリ内にプレビューモーダルを表示して長押し保存させる
+            const modal = document.getElementById('imagePreviewModal');
+            const previewImg = document.getElementById('previewImageElement');
+            previewImg.src = dataUrl;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
           })
           .catch((error) => {
             mainAppContainer.style.height = origMainHeight;
@@ -834,6 +846,12 @@
             setTimeout(hideToast, 2000);
           });
       }, 100);
+    }
+
+    function closeImagePreviewModal() {
+      const modal = document.getElementById('imagePreviewModal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
     }
 
     function openContextMenu(e, msgId, posX, posY) {
@@ -1154,15 +1172,63 @@
         exportedAt: new Date().toISOString(),
         members: membersData
       };
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.href = url;
-      link.download = `member-talk-backup_${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      showToast('バックアップを保存しました');
-      setTimeout(hideToast, 2000);
+      const jsonString = JSON.stringify(backup, null, 2);
+
+      // PCなど通常のダウンロードが使える環境用のフォールバック
+      try {
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `member-talk-backup_${new Date().toISOString().slice(0, 10)}.json`;
+        
+        // iOS以外やPCであればそのままクリック実行
+        if (!navigator.userAgent.match(/iphone|ipad|ipod/i)) {
+          link.click();
+          URL.revokeObjectURL(url);
+          showToast('バックアップを保存しました');
+          setTimeout(hideToast, 2000);
+          return;
+        }
+      } catch (e) {
+        // エラー時はモーダル表示へフォールバック
+      }
+
+      // iOS（ホーム画面PWAなど）で確実に保存・エクスポートするためのモーダル表示
+      showBackupExportModal(jsonString);
+    }
+
+    function showBackupExportModal(jsonString) {
+      // 既存のモーダルがあれば使い回し、なければ作成するモーダルを表示
+      let modal = document.getElementById('backupExportModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'backupExportModal';
+        modal.className = 'fixed inset-0 bg-black/80 hidden flex-col items-center justify-center p-4 z-50';
+        modal.innerHTML = `
+          <div class="bg-white rounded-2xl w-full max-w-sm p-4 flex flex-col max-h-[85vh] shadow-2xl relative">
+            <div class="flex items-center justify-between mb-2 shrink-0">
+              <h3 class="text-sm font-bold text-slate-800">バックアップの書き出し</h3>
+              <button onclick="document.getElementById('backupExportModal').classList.add('hidden'); document.getElementById('backupExportModal').classList.remove('flex');" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500 mb-2 text-center shrink-0">以下のテキストをすべてコピーし、メモアプリなどに貼り付けて「.json」ファイルとして保存してください。</p>
+            <textarea id="backupTextArea" readonly class="w-full h-48 bg-slate-100 text-xs p-2.5 rounded-xl font-mono text-slate-700 select-all focus:outline-none mb-3 shrink-0"></textarea>
+            <div class="flex gap-2">
+              <button onclick="navigator.clipboard.writeText(document.getElementById('backupTextArea').value); showToast('コピーしました！'); setTimeout(hideToast, 2000);" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition">
+                <i class="fa-solid fa-copy mr-1"></i> テキストをコピー
+              </button>
+              <button onclick="document.getElementById('backupExportModal').classList.add('hidden'); document.getElementById('backupExportModal').classList.remove('flex');" class="py-2.5 px-4 bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">閉じる</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      document.getElementById('backupTextArea').value = jsonString;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
     }
 
     function importBackup(event) {
