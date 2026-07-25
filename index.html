@@ -180,7 +180,7 @@
       <!-- チャット画面全体のラッパー -->
       <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
         <!-- キャプチャ対象エリア -->
-        <div id="captureArea" class="flex-1 flex flex-col min-h-0 app-bg overflow-hidden">
+        <div id="captureArea" class="flex-1 flex flex-col min-h-0 app-bg overflow-hidden pt-4">
           <div class="pt-3 pb-2 px-4 shrink-0 bg-transparent flex items-center justify-between mx-3">
             <div class="flex items-center gap-2.5 min-w-0">
               <div class="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full bg-slate-200/80 shrink-0 flex items-center justify-center text-slate-600">
@@ -362,7 +362,8 @@
   </div>
 
   <script>
-    let membersData = JSON.parse(localStorage.getItem('idol_talk_members')) || [];
+    let db = null;
+    let membersData = [];
     let currentMemberId = null;
     let currentEventId = null;
     let senderMode = 'them';
@@ -370,8 +371,62 @@
     let selectedEventIdForContext = null;
     let selectedMsgIdForContext = null;
 
-    function saveData() {
-      localStorage.setItem('idol_talk_members', JSON.stringify(membersData));
+    // IndexedDB初期化
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('IdolTalkDB', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains('appData')) {
+            database.createObjectStore('appData');
+          }
+        };
+      });
+    }
+
+    function loadDataFromDB() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['appData'], 'readonly');
+        const store = transaction.objectStore('appData');
+        const request = store.get('members');
+        request.onsuccess = () => {
+          membersData = request.result || [];
+          resolve(membersData);
+        };
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function saveDataToDB() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['appData'], 'readwrite');
+        const store = transaction.objectStore('appData');
+        const request = store.put(membersData, 'members');
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // 古いlocalStorageからの自動移行（初回のみ）
+    async function migrateLocalStorageIfNeeded() {
+      const local = localStorage.getItem('idol_talk_members');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            membersData = parsed;
+            await saveDataToDB();
+            localStorage.removeItem('idol_talk_members');
+          }
+        } catch (e) {
+          console.error('Migration failed', e);
+        }
+      }
     }
 
     function showToast(msg) {
@@ -447,7 +502,7 @@
         element.classList.remove('drag-over');
       });
 
-      element.addEventListener('drop', (e) => {
+      element.addEventListener('drop', async (e) => {
         e.preventDefault();
         element.classList.remove('drag-over');
         if (!draggedId || draggedId === id) return;
@@ -458,7 +513,7 @@
           if (fromIdx !== -1 && toIdx !== -1) {
             const [moved] = membersData.splice(fromIdx, 1);
             membersData.splice(toIdx, 0, moved);
-            saveData();
+            await saveDataToDB();
             renderMemberList(document.getElementById('searchMember').value.trim());
           }
         } else if (listType === 'event') {
@@ -469,7 +524,7 @@
           if (fromIdx !== -1 && toIdx !== -1) {
             const [moved] = member.events.splice(fromIdx, 1);
             member.events.splice(toIdx, 0, moved);
-            saveData();
+            await saveDataToDB();
             renderEventList(document.getElementById('searchEvent').value.trim());
           }
         }
@@ -643,22 +698,22 @@
       menu.classList.remove('hidden');
     }
 
-    function msgAction(actionType) {
+    async function msgAction(actionType) {
       closeAllContextMenus();
       if (!selectedMsgIdForContext) return;
 
       if (actionType === 'edit') {
         openMsgEditModal(selectedMsgIdForContext);
       } else if (actionType === 'up') {
-        moveMessageOrder(selectedMsgIdForContext, 'up');
+        await moveMessageOrder(selectedMsgIdForContext, 'up');
       } else if (actionType === 'down') {
-        moveMessageOrder(selectedMsgIdForContext, 'down');
+        await moveMessageOrder(selectedMsgIdForContext, 'down');
       } else if (actionType === 'delete') {
         if (confirm('このメッセージを削除しますか？')) {
           const member = membersData.find(m => m.id === currentMemberId);
           const event = member.events.find(e => e.id === currentEventId);
           event.messages = event.messages.filter(m => m.id !== selectedMsgIdForContext);
-          saveData();
+          await saveDataToDB();
           renderChatMessages();
         }
       }
@@ -684,26 +739,26 @@
       menu.classList.remove('hidden');
     }
 
-    function memberContextAction(type) {
+    async function memberContextAction(type) {
       closeAllContextMenus();
       if (type === 'edit') openMemberModal(selectedMemberIdForContext);
       if (type === 'delete') {
         if (confirm('このメンバーを削除しますか？')) {
           membersData = membersData.filter(m => m.id !== selectedMemberIdForContext);
-          saveData();
+          await saveDataToDB();
           renderMemberList();
         }
       }
     }
 
-    function eventContextAction(type) {
+    async function eventContextAction(type) {
       closeAllContextMenus();
       if (type === 'edit') openEventModal(selectedEventIdForContext);
       if (type === 'delete') {
         if (confirm('このイベントを削除しますか？')) {
           const member = membersData.find(m => m.id === currentMemberId);
           member.events = member.events.filter(e => e.id !== selectedEventIdForContext);
-          saveData();
+          await saveDataToDB();
           renderEventList();
         }
       }
@@ -753,7 +808,7 @@
       const fileInput = document.getElementById('inputMemberFile');
       if (!name) return;
 
-      const proceedSave = (avatarUrl) => {
+      const proceedSave = async (avatarUrl) => {
         let finalAvatar = avatarUrl || url;
         if (!finalAvatar && editId) {
           const m = membersData.find(item => item.id === editId);
@@ -767,7 +822,7 @@
         } else {
           membersData.push({ id: 'm_' + Date.now(), name, role: role || 'アイドル', avatar: finalAvatar, events: [] });
         }
-        saveData();
+        await saveDataToDB();
         closeMemberModal();
         renderMemberList();
       };
@@ -781,11 +836,11 @@
       }
     }
 
-    function deleteMemberFromModal() {
+    async function deleteMemberFromModal() {
       const editId = document.getElementById('editMemberId').value;
       if (!editId || !confirm('このメンバーを削除しますか？')) return;
       membersData = membersData.filter(m => m.id !== editId);
-      saveData();
+      await saveDataToDB();
       closeMemberModal();
       renderMemberList();
     }
@@ -829,7 +884,7 @@
       document.getElementById('eventModal').classList.add('hidden');
     }
 
-    function saveEvent() {
+    async function saveEvent() {
       const editId = document.getElementById('editEventId').value;
       const date = document.getElementById('inputEventDate').value.trim();
       const place = document.getElementById('inputEventPlace').value.trim();
@@ -844,17 +899,17 @@
       } else {
         member.events.push({ id: 'e_' + Date.now(), date, place, section, count, messages: [] });
       }
-      saveData();
+      await saveDataToDB();
       closeEventModal();
       renderEventList();
     }
 
-    function deleteEventFromModal() {
+    async function deleteEventFromModal() {
       const editId = document.getElementById('editEventId').value;
       if (!editId || !confirm('このイベントを削除しますか？')) return;
       const member = membersData.find(m => m.id === currentMemberId);
       member.events = member.events.filter(e => e.id !== editId);
-      saveData();
+      await saveDataToDB();
       closeEventModal();
       renderEventList();
     }
@@ -879,7 +934,7 @@
       document.getElementById('msgEditModal').classList.add('hidden');
     }
 
-    function saveEditedMessage() {
+    async function saveEditedMessage() {
       const msgId = document.getElementById('editMsgId').value;
       const sender = document.getElementById('editMsgSender').value;
       const text = document.getElementById('editMsgText').value.trim();
@@ -891,13 +946,13 @@
       if (msg) {
         msg.sender = sender;
         msg.text = text;
-        saveData();
+        await saveDataToDB();
         closeMsgEditModal();
         renderChatMessages();
       }
     }
 
-    function moveMessageOrder(msgId, direction) {
+    async function moveMessageOrder(msgId, direction) {
       const member = membersData.find(m => m.id === currentMemberId);
       const event = member.events.find(e => e.id === currentEventId);
       const idx = event.messages.findIndex(m => m.id === msgId);
@@ -912,7 +967,7 @@
         event.messages[idx] = event.messages[idx + 1];
         event.messages[idx + 1] = temp;
       }
-      saveData();
+      await saveDataToDB();
       renderChatMessages();
     }
 
@@ -957,7 +1012,7 @@
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
           const backup = JSON.parse(reader.result);
           const importedMembers = Array.isArray(backup) ? backup : backup.members;
@@ -966,7 +1021,7 @@
           membersData = importedMembers;
           currentMemberId = null;
           currentEventId = null;
-          saveData();
+          await saveDataToDB();
           switchScreen('screen-members');
           showToast('バックアップを読み込みました');
           setTimeout(hideToast, 2000);
@@ -979,7 +1034,7 @@
       reader.readAsText(file);
     }
 
-    function sendMessage() {
+    async function sendMessage() {
       const input = document.getElementById('messageInput');
       const text = input.value.trim();
       if (!text || !currentMemberId || !currentEventId) return;
@@ -993,7 +1048,7 @@
         text,
         time: `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
       });
-      saveData();
+      await saveDataToDB();
       input.value = '';
       renderChatMessages();
     }
@@ -1014,7 +1069,6 @@
 
       showToast('画像を生成中...');
 
-      // キャプチャエリア内のすべての画像（アイコン等）が確実にロード完了しているかチェック
       const images = captureElement.querySelectorAll('img');
       const imagePromises = Array.from(images).map(img => {
         if (img.complete) return Promise.resolve();
@@ -1072,7 +1126,17 @@
       modal.classList.add('hidden');
     }
 
-    renderMemberList();
+    // アプリ起動時にIndexedDBを初期化してデータを読み込む
+    initDB()
+      .then(async () => {
+        await migrateLocalStorageIfNeeded();
+        await loadDataFromDB();
+        renderMemberList();
+      })
+      .catch(err => {
+        console.error('IndexedDB initialization failed:', err);
+        showToast('データベースの初期化に失敗しました');
+      });
   </script>
 </body>
 </html>
