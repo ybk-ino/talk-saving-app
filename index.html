@@ -185,7 +185,7 @@
         </button>
       </div>
 
-      <!-- キャプチャ対象エリア -->
+      <!-- キャプチャ対象エリア（スクロール見切れ対策としてflex構造を整理） -->
       <div id="captureArea" class="flex-1 flex flex-col min-h-0 app-bg overflow-hidden">
         <!-- イベントタイトル（カレンダーアイコン付き） -->
         <div class="pt-3 pb-2 px-4 shrink-0 bg-transparent flex items-center justify-between mx-3">
@@ -204,14 +204,14 @@
           <div id="chatEventCount" class="text-right text-xs shrink-0 leading-tight hidden"></div>
         </div>
 
-        <!-- メッセージエリア -->
+        <!-- メッセージエリア（高さを確実に取れるように修正） -->
         <div class="flex-1 p-4 overflow-y-auto space-y-3 min-h-0" id="chatMessages">
-          <!-- JSで動的描画 -->
+          <!-- JSで動적描画 -->
         </div>
       </div>
 
       <!-- メッセージ入力欄（固定） -->
-      <div class="px-3 pt-4 pb-6 pl-4 pr-4 bg-transparent flex items-center gap-2 shrink-0 z-10">
+      <div class="px-3 pt-3 pb-5 pl-4 pr-4 bg-transparent flex items-center gap-2 shrink-0 z-10">
         <!-- 送信者切替ボタン -->
         <button id="senderToggleBtn" onclick="toggleSenderMode()" class="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm shrink-0 transition bg-white text-xs font-bold text-slate-700">
           <span id="senderToggleLabel">メンバー</span>
@@ -794,6 +794,48 @@
       updateSenderToggleUI();
     }
 
+    // 画像出力関数の改善（初回アイコン非表示・遅延対策のプリロード＆速度最適化）
+    async function exportChatImage() {
+      const captureArea = document.getElementById('captureArea');
+      if (!captureArea) return;
+
+      showToast('画像を生成中...');
+
+      try {
+        // キャプチャエリア内の全画像をプリロード（確実に読み込ませてからキャプチャする）
+        const imgs = captureArea.querySelectorAll('img');
+        await Promise.all(Array.from(imgs).map(img => {
+          if (img.complete) return Promise.resolve();
+          return new Promise(resolve => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        }));
+
+        const dataUrl = await htmlToImage.toPng(captureArea, {
+          pixelRatio: 1.5, // 速度と画質のバランスを最適化
+          cacheBust: false,
+          backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim() || '#f1f0e8'
+        });
+
+        hideToast();
+        const modal = document.getElementById('imagePreviewModal');
+        const imgEl = document.getElementById('previewImageElement');
+        imgEl.src = dataUrl;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } catch (error) {
+        hideToast();
+        alert('画像の生成に失敗しました。');
+      }
+    }
+
+    function closeImagePreviewModal() {
+      const modal = document.getElementById('imagePreviewModal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+    }
+
     // 汎用3Dタッチ風ドラッグ＆ドロップ実装
     function setupDragAndDropEvents(element, type, id) {
       const startDragHandler = (clientX, clientY, targetElement) => {
@@ -1237,37 +1279,6 @@
     document.getElementById('searchEvent').addEventListener('input', (e) => {
       renderEventList(e.target.value.trim());
     });
-
-    function exportChatImage() {
-      const captureArea = document.getElementById('captureArea');
-      if (!captureArea) return;
-
-      showToast('画像を生成中...');
-
-      htmlToImage.toPng(captureArea, {
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim() || '#f1f0e8'
-      })
-      .then((dataUrl) => {
-        hideToast();
-        const modal = document.getElementById('imagePreviewModal');
-        const imgEl = document.getElementById('previewImageElement');
-        imgEl.src = dataUrl;
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      })
-      .catch((error) => {
-        hideToast();
-        alert('画像の生成に失敗しました。');
-      });
-    }
-
-    function closeImagePreviewModal() {
-      const modal = document.getElementById('imagePreviewModal');
-      modal.classList.remove('flex');
-      modal.classList.add('hidden');
-    }
 
     renderMemberList();
   </script>
