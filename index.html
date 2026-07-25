@@ -22,6 +22,14 @@
 
     body {
       font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
     }
 
     ::-webkit-scrollbar {
@@ -74,16 +82,6 @@
       background-clip: padding-box;
       -webkit-mask-image: -webkit-radial-gradient(white, black);
     }
-
-    /* ドラッグ中のスタイル */
-    .dragging {
-      opacity: 0.4;
-      background: #e2e8f0;
-    }
-    
-    .drag-over {
-      border-top: 2px solid #6366f1;
-    }
   </style>
 </head>
 <body class="app-bg h-screen font-sans antialiased text-slate-800 flex items-center justify-center p-0 sm:p-4">
@@ -98,7 +96,7 @@
           <button onclick="toggleGlobalMenu(event)" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-white/70 hover:text-slate-700 transition" aria-label="メニュー">
             <i class="fa-solid fa-ellipsis-vertical"></i>
           </button>
-          <div id="globalContextMenu" class="absolute left-0 mt-1 hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-52 overflow-hidden select-none border border-slate-100 whitespace-nowrap">
+          <div id="globalContextMenu" class="absolute left-0 mt-1 hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-52 overflow-hidden border border-slate-100 whitespace-nowrap">
             <button onclick="exportBackup(); closeAllContextMenus();" class="w-full text-left px-3 py-2.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
               <i class="fa-solid fa-file-export text-slate-400 w-4"></i> バックアップを書き出す
             </button>
@@ -121,7 +119,7 @@
         </div>
       </div>
 
-      <!-- メンバー一覧（タッチ＆ドラッグ対応） -->
+      <!-- メンバー一覧 -->
       <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="memberList"></div>
     </div>
 
@@ -144,7 +142,7 @@
         </div>
       </div>
 
-      <!-- イベント一覧（タッチ＆ドラッグ対応） -->
+      <!-- イベント一覧 -->
       <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="eventRoomList"></div>
     </div>
 
@@ -176,7 +174,7 @@
           <div id="chatEventCount" class="text-right text-xs shrink-0 leading-tight hidden"></div>
         </div>
 
-        <!-- メッセージエリア（タッチ＆ドラッグ対応） -->
+        <!-- メッセージエリア -->
         <div class="flex-1 p-4 overflow-y-auto space-y-3 min-h-0" id="chatMessages"></div>
       </div>
 
@@ -203,7 +201,7 @@
         </button>
       </div>
       <div class="flex-1 overflow-y-auto bg-slate-100 rounded-xl p-2 flex justify-center min-h-0">
-        <img id="previewImageElement" src="" alt="Generated Chat Image" class="w-full h-auto rounded shadow object-contain select-none pointer-events-auto">
+        <img id="previewImageElement" src="" alt="Generated Chat Image" class="w-full h-auto rounded shadow object-contain pointer-events-auto">
       </div>
       <button onclick="closeImagePreviewModal()" class="mt-3 shrink-0 w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold">閉じる</button>
     </div>
@@ -291,7 +289,7 @@
   </div>
 
   <!-- コンテキストメニュー（共通） -->
-  <div id="msgContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-32 overflow-hidden select-none">
+  <div id="msgContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-32 overflow-hidden">
     <button onclick="contextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
     </button>
@@ -300,7 +298,7 @@
     </button>
   </div>
 
-  <div id="memberContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden select-none">
+  <div id="memberContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden">
     <button onclick="memberContextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
     </button>
@@ -309,7 +307,7 @@
     </button>
   </div>
 
-  <div id="eventContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden select-none">
+  <div id="eventContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden">
     <button onclick="eventContextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
     </button>
@@ -331,8 +329,6 @@
     let selectedMsgIdForContext = null;
     let selectedMemberIdForContext = null;
     let selectedEventIdForContext = null;
-
-    let draggedId = null;
 
     function saveData() {
       localStorage.setItem('idol_talk_members', JSON.stringify(membersData));
@@ -372,73 +368,14 @@
       menu.classList.toggle('hidden');
     }
 
-    // ==================== 共通の並び替えロジック（マウス＆タッチ対応） ====================
-    function attachDragAndDrop(item, id, getDataList, renderFunc) {
-      item.draggable = true;
-      item.dataset.id = id;
-
-      // PC向け HTML5 Drag & Drop
-      item.addEventListener('dragstart', (e) => {
-        draggedId = id;
-        e.dataTransfer.effectAllowed = 'move';
-        item.classList.add('dragging');
-      });
-      item.addEventListener('dragend', () => {
-        draggedId = null;
-        item.classList.remove('dragging');
-      });
-      item.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-      });
-      item.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (!draggedId || draggedId === id) return;
-        const list = getDataList();
-        const fromIdx = list.findIndex(x => x.id === draggedId);
-        const toIdx = list.findIndex(x => x.id === id);
-        if (fromIdx !== -1 && toIdx !== -1) {
-          const [moved] = list.splice(fromIdx, 1);
-          list.splice(toIdx, 0, moved);
-          saveData();
-          renderFunc();
-        }
-      });
-
-      // スマホ向け Touch Drag & Drop（グリップアイコンをタッチしている間のみ有効）
-      const grip = item.querySelector('.cursor-grab');
-      if (grip) {
-        let touchStartY = 0;
-        grip.addEventListener('touchstart', (e) => {
-          draggedId = id;
-          item.classList.add('dragging');
-        }, { passive: true });
-
-        item.addEventListener('touchmove', (e) => {
-          if (!draggedId) return;
-          const touch = e.touches[0];
-          const target = document.elementFromPoint(touch.clientX, touch.clientY);
-          const targetItem = target ? target.closest('[data-id]') : null;
-          if (targetItem && targetItem.dataset.id && targetItem.dataset.id !== draggedId) {
-            const list = getDataList();
-            const fromIdx = list.findIndex(x => x.id === draggedId);
-            const toIdx = list.findIndex(x => x.id === targetItem.dataset.id);
-            if (fromIdx !== -1 && toIdx !== -1) {
-              const [moved] = list.splice(fromIdx, 1);
-              list.splice(toIdx, 0, moved);
-              draggedId = targetItem.dataset.id; // 追従
-              saveData();
-              renderFunc();
-            }
-          }
-        }, { passive: true });
-
-        item.addEventListener('touchend', () => {
-          draggedId = null;
-          item.classList.remove('dragging');
-          renderFunc();
-        });
-      }
+    // ==================== 順序入れ替え用関数（ボタン操作） ====================
+    function moveItem(list, index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= list.length) return;
+      const temp = list[index];
+      list[index] = list[targetIndex];
+      list[targetIndex] = temp;
+      saveData();
     }
 
     // ==================== メンバーリスト描画 ====================
@@ -452,17 +389,21 @@
         return;
       }
 
-      filtered.forEach(member => {
+      filtered.forEach((member, index) => {
+        // 元の配列全体でのインデックスを取得（並び替え用）
+        const realIndex = membersData.findIndex(m => m.id === member.id);
         const item = document.createElement('div');
-        item.className = 'py-3 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none';
-
-        attachDragAndDrop(item, member.id, () => membersData, () => renderMemberList(document.getElementById('searchMember').value.trim()));
-        item.setAttribute('oncontextmenu', `openMemberContextMenu(event, '${member.id}')`);
+        item.className = 'py-3 px-3 flex items-center justify-between hover:bg-white/40 rounded-xl transition group';
 
         item.innerHTML = `
-          <div class="flex items-center gap-3.5 flex-1 min-w-0" onclick="selectMember('${member.id}')">
-            <div class="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing px-1 touch-none" title="ドラッグして並び替え">
-              <i class="fa-solid fa-grip-vertical text-xs"></i>
+          <div class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer" onclick="selectMember('${member.id}')">
+            <div class="flex flex-col gap-0.5 shrink-0" onclick="event.stopPropagation();">
+              <button onclick="moveItem(membersData, ${realIndex}, -1); renderMemberList(document.getElementById('searchMember').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === 0 ? 'disabled opacity-30' : ''}>
+                <i class="fa-solid fa-chevron-up"></i>
+              </button>
+              <button onclick="moveItem(membersData, ${realIndex}, 1); renderMemberList(document.getElementById('searchMember').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === membersData.length - 1 ? 'disabled opacity-30' : ''}>
+                <i class="fa-solid fa-chevron-down"></i>
+              </button>
             </div>
             <img src="${member.avatar}" crossorigin="anonymous" class="w-12 h-12 rounded-full object-cover shrink-0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">
             <div class="truncate">
@@ -501,18 +442,21 @@
         return;
       }
 
-      filtered.forEach(event => {
+      filtered.forEach((event, index) => {
+        const realIndex = member.events.findIndex(e => e.id === event.id);
         const placeAndSection = [event.place, event.section].filter(Boolean).join(' ') || '場所未設定';
         const item = document.createElement('div');
-        item.className = 'py-3.5 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none';
-
-        attachDragAndDrop(item, event.id, () => member.events, () => renderEventList(document.getElementById('searchEvent').value.trim()));
-        item.setAttribute('oncontextmenu', `openEventContextMenu(event, '${event.id}')`);
+        item.className = 'py-3.5 px-3 flex items-center justify-between hover:bg-white/40 rounded-xl transition group';
 
         item.innerHTML = `
-          <div class="flex items-center gap-3.5 flex-1 min-w-0" onclick="selectEvent('${event.id}')">
-            <div class="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing px-1 touch-none" title="ドラッグして並び替え">
-              <i class="fa-solid fa-grip-vertical text-xs"></i>
+          <div class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer" onclick="selectEvent('${event.id}')">
+            <div class="flex flex-col gap-0.5 shrink-0" onclick="event.stopPropagation();">
+              <button onclick="moveItem(member.events, ${realIndex}, -1); renderEventList(document.getElementById('searchEvent').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === 0 ? 'disabled opacity-30' : ''}>
+                <i class="fa-solid fa-chevron-up"></i>
+              </button>
+              <button onclick="moveItem(member.events, ${realIndex}, 1); renderEventList(document.getElementById('searchEvent').value.trim());" class="w-5 h-5 bg-slate-200/80 hover:bg-indigo-100 rounded text-slate-600 hover:text-indigo-700 flex items-center justify-center text-[10px] transition" ${realIndex === member.events.length - 1 ? 'disabled opacity-30' : ''}>
+                <i class="fa-solid fa-chevron-down"></i>
+              </button>
             </div>
             <div class="w-12 h-12 rounded-full bg-slate-200/80 shrink-0 flex flex-col items-center justify-center text-slate-600">
               <svg class="w-4 h-4 fill-current" viewBox="0 0 448 512">
@@ -571,26 +515,38 @@
         const prev = event.messages[index-1];
         const isContinue = prev && prev.sender==='them' && msg.sender==='them';
         const msgEl = document.createElement('div');
+        msgEl.className = 'group relative py-1';
 
-        attachDragAndDrop(msgEl, msg.id, () => event.messages, () => renderChatMessages());
-        const eventHandlers = `oncontextmenu="openContextMenu(event, '${msg.id}')"`;
+        const actionButtonsHtml = `
+          <div class="absolute right-2 top-0 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 bg-white/90 px-1.5 py-0.5 rounded-full shadow-sm z-10">
+            <button onclick="moveItem(event.messages, ${index}, -1); renderChatMessages();" class="text-slate-500 hover:text-indigo-600 px-1 text-xs" ${index === 0 ? 'disabled style="opacity:0.2;"' : ''}><i class="fa-solid fa-arrow-up"></i></button>
+            <button onclick="moveItem(event.messages, ${index}, 1); renderChatMessages();" class="text-slate-500 hover:text-indigo-600 px-1 text-xs" ${index === event.messages.length - 1 ? 'disabled style="opacity:0.2;"' : ''}><i class="fa-solid fa-arrow-down"></i></button>
+            <button onclick="openContextMenu(event, '${msg.id}')" class="text-slate-500 hover:text-indigo-600 px-1 text-xs"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+          </div>
+        `;
 
         if (msg.sender === 'topic') {
-          msgEl.className = 'flex justify-center items-center my-2 select-none cursor-grab active:cursor-grabbing';
-          msgEl.innerHTML = `<div ${eventHandlers} class="topic-bubble text-xs py-1.5 px-4 w-fit max-w-[85%] text-center shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>`;
-        } else if (msg.sender === 'me') {
-          msgEl.className = 'flex justify-end my-1.5 select-none cursor-grab active:cursor-grabbing';
-          msgEl.innerHTML = `<div ${eventHandlers} class="w-fit max-w-[75%] bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tr-none shadow-sm text-left chat-bubble-text">${escapeHtml(msg.text)}</div>`;
-        } else {
-          msgEl.className = 'select-none cursor-grab active:cursor-grabbing';
           msgEl.innerHTML = `
-          <div class="flex items-start my-1.5 gap-2">
-            ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5">`}
-            <div class="w-fit max-w-[75%]">
-              ${isContinue ? '' : `<div class="text-[11px] text-slate-500 mb-0.5 ml-1 font-medium">${escapeHtml(member.name)}</div>`}
-              <div ${eventHandlers} class="bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tl-none shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>
-            </div>
-          </div>`;
+            ${actionButtonsHtml}
+            <div class="flex justify-center items-center my-1">
+              <div class="topic-bubble text-xs py-1.5 px-4 w-fit max-w-[85%] text-center shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>
+            </div>`;
+        } else if (msg.sender === 'me') {
+          msgEl.innerHTML = `
+            ${actionButtonsHtml}
+            <div class="flex justify-end my-1">
+              <div class="w-fit max-w-[75%] bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tr-none shadow-sm text-left chat-bubble-text">${escapeHtml(msg.text)}</div>
+            </div>`;
+        } else {
+          msgEl.innerHTML = `
+            ${actionButtonsHtml}
+            <div class="flex items-start my-1 gap-2">
+              ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5">`}
+              <div class="w-fit max-w-[75%]">
+                ${isContinue ? '' : `<div class="text-[11px] text-slate-500 mb-0.5 ml-1 font-medium">${escapeHtml(member.name)}</div>`}
+                <div class="bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tl-none shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>
+              </div>
+            </div>`;
         }
         messagesContainer.appendChild(msgEl);
       });
@@ -789,32 +745,32 @@
 
     // Context Menus
     function openContextMenu(e, msgId) {
-      e.preventDefault();
+      e.stopPropagation();
       closeAllContextMenus();
       selectedMsgIdForContext = msgId;
       const menu = document.getElementById('msgContextMenu');
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top = `${e.clientY}px`;
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 130)}px`;
+      menu.style.top = `${e.clientY + 10}px`;
       menu.classList.remove('hidden');
     }
 
     function openMemberContextMenu(e, memberId) {
-      e.preventDefault();
+      e.stopPropagation();
       closeAllContextMenus();
       selectedMemberIdForContext = memberId;
       const menu = document.getElementById('memberContextMenu');
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top = `${e.clientY}px`;
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 140)}px`;
+      menu.style.top = `${e.clientY + 10}px`;
       menu.classList.remove('hidden');
     }
 
     function openEventContextMenu(e, eventId) {
-      e.preventDefault();
+      e.stopPropagation();
       closeAllContextMenus();
       selectedEventIdForContext = eventId;
       const menu = document.getElementById('eventContextMenu');
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top = `${e.clientY}px`;
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 140)}px`;
+      menu.style.top = `${e.clientY + 10}px`;
       menu.classList.remove('hidden');
     }
 
