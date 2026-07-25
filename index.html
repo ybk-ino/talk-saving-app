@@ -601,7 +601,7 @@
               <div class="flex items-center justify-between mb-0.5">
                 <h3 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(event.date || '日付未設定')}</h3>
                 <div class="text-right text-xs text-slate-500 shrink-0 leading-tight">
-                  ${event.count ? `<span class="bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md"><i class="fa-solid fa-ticket text-[10px] mr-1"></i>${escapeHtml(event.count)}枚</span>` : ''}
+                  ${event.count ? `<span class="bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md inline-flex items-center"><svg class="w-3 h-3 fill-current mr-1 inline-block align-middle" viewBox="0 0 576 512"><path d="M0 128C0 92.7 28.7 64 64 64H512c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zm128 64V320c0 8.8 7.2 16 16 16H432c8.8 0 16-7.2 16-16V192c0-8.8-7.2-16-16-16H144c-8.8 0-16 7.2-16 16z"/></svg>${escapeHtml(event.count)}枚</span>` : ''}
                 </div>
               </div>
               <p class="text-sm text-slate-600 truncate">${event.place ? '<i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>' : ''}${escapeHtml(placeAndSection)}</p>
@@ -730,7 +730,7 @@
 
       const countEl = document.getElementById('chatEventCount');
       if (event.count) {
-        countEl.innerHTML = `<span class="bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md"><i class="fa-solid fa-ticket text-[10px] mr-1"></i>${escapeHtml(event.count)}枚</span>`;
+        countEl.innerHTML = `<span class="bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md inline-flex items-center"><svg class="w-3 h-3 fill-current mr-1 inline-block align-middle" viewBox="0 0 576 512"><path d="M0 128C0 92.7 28.7 64 64 64H512c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zm128 64V320c0 8.8 7.2 16 16 16H432c8.8 0 16-7.2 16-16V192c0-8.8-7.2-16-16-16H144c-8.8 0-16 7.2-16 16z"/></svg>${escapeHtml(event.count)}枚</span>`;
         countEl.classList.remove('hidden');
       } else {
         countEl.innerHTML = '';
@@ -808,7 +808,7 @@
       messagesContainer.style.height = messagesContainer.scrollHeight + 'px';
       messagesContainer.style.overflow = 'visible';
 
-      // メンバーアイコンの初回非表示・読み込み遅延対策: 画像のプリロード処理を追加[cite: 3]
+      // アイコン等の確実な描画完了を待つためのプリロードと多段遅延処理
       const images = Array.from(captureElement.querySelectorAll('img'));
       const imagePromises = images.map(img => {
         return new Promise((resolve) => {
@@ -823,50 +823,53 @@
 
       Promise.all(imagePromises).then(() => {
         setTimeout(() => {
-          htmlToImage.toPng(captureElement, { 
-            cacheBust: true, 
-            pixelRatio: 2,
-            fontEmbedCSS: '',
-            filter: (node) => {
-              return node.tagName !== 'SCRIPT';
-            }
-          })
-            .then((dataUrl) => {
-              mainAppContainer.style.height = origMainHeight;
-              mainAppContainer.style.overflow = origMainOverflow;
-              chatScreen.style.height = origScreenHeight;
-              chatScreen.style.overflow = origScreenOverflow;
-
-              captureElement.style.height = origCaptureHeight;
-              captureElement.style.overflow = origCaptureOverflow;
-
-              messagesContainer.style.height = origMsgHeight;
-              messagesContainer.style.overflow = origMsgOverflow;
-
-              hideToast();
-
-              const modal = document.getElementById('imagePreviewModal');
-              const previewImg = document.getElementById('previewImageElement');
-              previewImg.src = dataUrl;
-              modal.classList.remove('hidden');
-              modal.classList.add('flex');
+          // 外部フォントやアイコンフォントのレンダリング安定待ち
+          setTimeout(() => {
+            htmlToImage.toPng(captureElement, { 
+              cacheBust: true, 
+              pixelRatio: 2,
+              fontEmbedCSS: '',
+              filter: (node) => {
+                return node.tagName !== 'SCRIPT';
+              }
             })
-            .catch((error) => {
-              mainAppContainer.style.height = origMainHeight;
-              mainAppContainer.style.overflow = origMainOverflow;
-              chatScreen.style.height = origScreenHeight;
-              chatScreen.style.overflow = origScreenOverflow;
+              .then((dataUrl) => {
+                mainAppContainer.style.height = origMainHeight;
+                mainAppContainer.style.overflow = origMainOverflow;
+                chatScreen.style.height = origScreenHeight;
+                chatScreen.style.overflow = origScreenOverflow;
 
-              captureElement.style.height = origCaptureHeight;
-              captureElement.style.overflow = origCaptureOverflow;
+                captureElement.style.height = origCaptureHeight;
+                captureElement.style.overflow = origCaptureOverflow;
 
-              messagesContainer.style.height = origMsgHeight;
-              messagesContainer.style.overflow = origMsgOverflow;
+                messagesContainer.style.height = origMsgHeight;
+                messagesContainer.style.overflow = origMsgOverflow;
 
-              console.error('oops, something went wrong!', error);
-              showToast('画像の保存に失敗しました');
-              setTimeout(hideToast, 2000);
-            });
+                hideToast();
+
+                const modal = document.getElementById('imagePreviewModal');
+                const previewImg = document.getElementById('previewImageElement');
+                previewImg.src = dataUrl;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+              })
+              .catch((error) => {
+                mainAppContainer.style.height = origMainHeight;
+                mainAppContainer.style.overflow = origMainOverflow;
+                chatScreen.style.height = origScreenHeight;
+                chatScreen.style.overflow = origScreenOverflow;
+
+                captureElement.style.height = origCaptureHeight;
+                captureElement.style.overflow = origCaptureOverflow;
+
+                messagesContainer.style.height = origMsgHeight;
+                messagesContainer.style.overflow = origMsgOverflow;
+
+                console.error('oops, something went wrong!', error);
+                showToast('画像の保存に失敗しました');
+                setTimeout(hideToast, 2000);
+              });
+          }, 150);
         }, 100);
       });
     }
