@@ -121,7 +121,7 @@
         </div>
       </div>
 
-      <!-- メンバー一覧（ドラッグ＆ドロップ対応） -->
+      <!-- メンバー一覧（タッチ＆ドラッグ対応） -->
       <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="memberList"></div>
     </div>
 
@@ -144,7 +144,7 @@
         </div>
       </div>
 
-      <!-- イベント一覧（ドラッグ＆ドロップ対応） -->
+      <!-- イベント一覧（タッチ＆ドラッグ対応） -->
       <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="eventRoomList"></div>
     </div>
 
@@ -176,7 +176,7 @@
           <div id="chatEventCount" class="text-right text-xs shrink-0 leading-tight hidden"></div>
         </div>
 
-        <!-- メッセージエリア（ドラッグ＆ドロップ対応） -->
+        <!-- メッセージエリア（タッチ＆ドラッグ対応） -->
         <div class="flex-1 p-4 overflow-y-auto space-y-3 min-h-0" id="chatMessages"></div>
       </div>
 
@@ -372,7 +372,76 @@
       menu.classList.toggle('hidden');
     }
 
-    // ==================== メンバーリスト描画 & ドラッグ＆ドロップ ====================
+    // ==================== 共通の並び替えロジック（マウス＆タッチ対応） ====================
+    function attachDragAndDrop(item, id, getDataList, renderFunc) {
+      item.draggable = true;
+      item.dataset.id = id;
+
+      // PC向け HTML5 Drag & Drop
+      item.addEventListener('dragstart', (e) => {
+        draggedId = id;
+        e.dataTransfer.effectAllowed = 'move';
+        item.classList.add('dragging');
+      });
+      item.addEventListener('dragend', () => {
+        draggedId = null;
+        item.classList.remove('dragging');
+      });
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!draggedId || draggedId === id) return;
+        const list = getDataList();
+        const fromIdx = list.findIndex(x => x.id === draggedId);
+        const toIdx = list.findIndex(x => x.id === id);
+        if (fromIdx !== -1 && toIdx !== -1) {
+          const [moved] = list.splice(fromIdx, 1);
+          list.splice(toIdx, 0, moved);
+          saveData();
+          renderFunc();
+        }
+      });
+
+      // スマホ向け Touch Drag & Drop（グリップアイコンをタッチしている間のみ有効）
+      const grip = item.querySelector('.cursor-grab');
+      if (grip) {
+        let touchStartY = 0;
+        grip.addEventListener('touchstart', (e) => {
+          draggedId = id;
+          item.classList.add('dragging');
+        }, { passive: true });
+
+        item.addEventListener('touchmove', (e) => {
+          if (!draggedId) return;
+          const touch = e.touches[0];
+          const target = document.elementFromPoint(touch.clientX, touch.clientY);
+          const targetItem = target ? target.closest('[data-id]') : null;
+          if (targetItem && targetItem.dataset.id && targetItem.dataset.id !== draggedId) {
+            const list = getDataList();
+            const fromIdx = list.findIndex(x => x.id === draggedId);
+            const toIdx = list.findIndex(x => x.id === targetItem.dataset.id);
+            if (fromIdx !== -1 && toIdx !== -1) {
+              const [moved] = list.splice(fromIdx, 1);
+              list.splice(toIdx, 0, moved);
+              draggedId = targetItem.dataset.id; // 追従
+              saveData();
+              renderFunc();
+            }
+          }
+        }, { passive: true });
+
+        item.addEventListener('touchend', () => {
+          draggedId = null;
+          item.classList.remove('dragging');
+          renderFunc();
+        });
+      }
+    }
+
+    // ==================== メンバーリスト描画 ====================
     function renderMemberList(filter = '') {
       const listEl = document.getElementById('memberList');
       listEl.innerHTML = '';
@@ -386,40 +455,13 @@
       filtered.forEach(member => {
         const item = document.createElement('div');
         item.className = 'py-3 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none';
-        item.draggable = true;
-        item.dataset.id = member.id;
 
-        item.addEventListener('dragstart', (e) => {
-          draggedId = member.id;
-          e.dataTransfer.effectAllowed = 'move';
-          item.classList.add('dragging');
-        });
-        item.addEventListener('dragend', () => {
-          draggedId = null;
-          item.classList.remove('dragging');
-        });
-        item.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-        });
-        item.addEventListener('drop', (e) => {
-          e.preventDefault();
-          if (!draggedId || draggedId === member.id) return;
-          const fromIdx = membersData.findIndex(m => m.id === draggedId);
-          const toIdx = membersData.findIndex(m => m.id === member.id);
-          if (fromIdx !== -1 && toIdx !== -1) {
-            const [moved] = membersData.splice(fromIdx, 1);
-            membersData.splice(toIdx, 0, moved);
-            saveData();
-            renderMemberList(document.getElementById('searchMember').value.trim());
-          }
-        });
-
+        attachDragAndDrop(item, member.id, () => membersData, () => renderMemberList(document.getElementById('searchMember').value.trim()));
         item.setAttribute('oncontextmenu', `openMemberContextMenu(event, '${member.id}')`);
 
         item.innerHTML = `
           <div class="flex items-center gap-3.5 flex-1 min-w-0" onclick="selectMember('${member.id}')">
-            <div class="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing px-1" title="ドラッグして並び替え">
+            <div class="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing px-1 touch-none" title="ドラッグして並び替え">
               <i class="fa-solid fa-grip-vertical text-xs"></i>
             </div>
             <img src="${member.avatar}" crossorigin="anonymous" class="w-12 h-12 rounded-full object-cover shrink-0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">
@@ -445,7 +487,7 @@
       switchScreen('screen-events');
     }
 
-    // ==================== イベントリスト描画 & ドラッグ＆ドロップ ====================
+    // ==================== イベントリスト描画 ====================
     function renderEventList(filter = '') {
       const listEl = document.getElementById('eventRoomList');
       listEl.innerHTML = '';
@@ -463,40 +505,13 @@
         const placeAndSection = [event.place, event.section].filter(Boolean).join(' ') || '場所未設定';
         const item = document.createElement('div');
         item.className = 'py-3.5 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none';
-        item.draggable = true;
-        item.dataset.id = event.id;
 
-        item.addEventListener('dragstart', (e) => {
-          draggedId = event.id;
-          e.dataTransfer.effectAllowed = 'move';
-          item.classList.add('dragging');
-        });
-        item.addEventListener('dragend', () => {
-          draggedId = null;
-          item.classList.remove('dragging');
-        });
-        item.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-        });
-        item.addEventListener('drop', (e) => {
-          e.preventDefault();
-          if (!draggedId || draggedId === event.id) return;
-          const fromIdx = member.events.findIndex(ev => ev.id === draggedId);
-          const toIdx = member.events.findIndex(ev => ev.id === event.id);
-          if (fromIdx !== -1 && toIdx !== -1) {
-            const [moved] = member.events.splice(fromIdx, 1);
-            member.events.splice(toIdx, 0, moved);
-            saveData();
-            renderEventList(document.getElementById('searchEvent').value.trim());
-          }
-        });
-
+        attachDragAndDrop(item, event.id, () => member.events, () => renderEventList(document.getElementById('searchEvent').value.trim()));
         item.setAttribute('oncontextmenu', `openEventContextMenu(event, '${event.id}')`);
 
         item.innerHTML = `
           <div class="flex items-center gap-3.5 flex-1 min-w-0" onclick="selectEvent('${event.id}')">
-            <div class="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing px-1" title="ドラッグして並び替え">
+            <div class="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing px-1 touch-none" title="ドラッグして並び替え">
               <i class="fa-solid fa-grip-vertical text-xs"></i>
             </div>
             <div class="w-12 h-12 rounded-full bg-slate-200/80 shrink-0 flex flex-col items-center justify-center text-slate-600">
@@ -529,7 +544,7 @@
       switchScreen('screen-chat');
     }
 
-    // ==================== チャットメッセージ描画 & ドラッグ＆ドロップ ====================
+    // ==================== チャットメッセージ描画 ====================
     function renderChatMessages() {
       const member = membersData.find(m => m.id === currentMemberId);
       if (!member) return;
@@ -556,35 +571,8 @@
         const prev = event.messages[index-1];
         const isContinue = prev && prev.sender==='them' && msg.sender==='them';
         const msgEl = document.createElement('div');
-        msgEl.draggable = true;
-        msgEl.dataset.id = msg.id;
 
-        msgEl.addEventListener('dragstart', (e) => {
-          draggedId = msg.id;
-          e.dataTransfer.effectAllowed = 'move';
-          msgEl.classList.add('dragging');
-        });
-        msgEl.addEventListener('dragend', () => {
-          draggedId = null;
-          msgEl.classList.remove('dragging');
-        });
-        msgEl.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-        });
-        msgEl.addEventListener('drop', (e) => {
-          e.preventDefault();
-          if (!draggedId || draggedId === msg.id) return;
-          const fromIdx = event.messages.findIndex(m => m.id === draggedId);
-          const toIdx = event.messages.findIndex(m => m.id === msg.id);
-          if (fromIdx !== -1 && toIdx !== -1) {
-            const [moved] = event.messages.splice(fromIdx, 1);
-            event.messages.splice(toIdx, 0, moved);
-            saveData();
-            renderChatMessages();
-          }
-        });
-
+        attachDragAndDrop(msgEl, msg.id, () => event.messages, () => renderChatMessages());
         const eventHandlers = `oncontextmenu="openContextMenu(event, '${msg.id}')"`;
 
         if (msg.sender === 'topic') {
