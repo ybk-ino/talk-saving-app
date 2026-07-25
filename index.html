@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="apple-touch-icon" href="./icon.png">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -145,7 +144,8 @@
         <button onclick="switchScreen('screen-events')" class="text-slate-600 hover:text-slate-900 text-lg px-2">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
-        <h1 class="text-lg font-bold text-slate-800 absolute left-1/2 -translate-x-1/2" id="chatScreenTitle">トークルーム</h1>
+        <!-- タイトル部分：text-xlに拡大 -->
+        <h1 class="text-xl font-bold text-slate-800 absolute left-1/2 -translate-x-1/2" id="chatScreenTitle">トークルーム</h1>
         <button onclick="exportChatImage()" class="text-slate-600 hover:text-slate-900 text-base px-2" aria-label="トーク画像を保存">
           <i class="fa-solid fa-camera"></i>
         </button>
@@ -177,13 +177,14 @@
       </div>
 
       <!-- メッセージ入力欄 -->
-      <div class="p-3 bg-transparent flex items-center gap-2 shrink-0">
+      <div class="px-3 pt-4 pb-6 pl-4 pr-4 bg-transparent flex items-center gap-2 shrink-0">
         <!-- 送信者切替ボタン -->
         <button id="senderToggleBtn" onclick="toggleSenderMode()" class="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm shrink-0 transition bg-white text-xs font-bold text-slate-700">
           <span id="senderToggleLabel">メンバー</span>
         </button>
 
-        <input type="text" id="messageInput" placeholder="メッセージを入力..." class="flex-1 bg-slate-200/70 text-sm px-4 py-2.5 rounded-full focus:bg-white focus:outline-none transition">
+        <!-- 入力フィールド：高さを高めに設定 (py-3.5) -->
+        <input type="text" id="messageInput" placeholder="メッセージを入力..." class="flex-1 bg-slate-200/70 text-sm px-4 py-3.5 rounded-full focus:bg-white focus:outline-none transition">
 
         <button onclick="sendMessage()" class="text-slate-600 hover:text-slate-800 px-2 text-xl">
           <i class="fa-solid fa-paper-plane"></i>
@@ -798,18 +799,23 @@
             messagesContainer.style.height = origMsgHeight;
             messagesContainer.style.overflow = origMsgOverflow;
 
-            const link = document.createElement('a');
-            const member = membersData.find(m => m.id === currentMemberId);
-            const event = member ? member.events.find(e => e.id === currentEventId) : null;
-            const dateStr = event && event.date ? event.date : 'talk';
-            const memberName = member && member.name ? member.name : 'member';
+            // iPhoneのSafariでも確実にアルバム保存できるように画像を別タブで開く
+            const newWindow = window.open(dataUrl, '_blank');
+            if (!newWindow) {
+              // ポップアップがブロックされた場合のフォールバック
+              const link = document.createElement('a');
+              const member = membersData.find(m => m.id === currentMemberId);
+              const event = member ? member.events.find(e => e.id === currentEventId) : null;
+              const dateStr = event && event.date ? event.date : 'talk';
+              const memberName = member && member.name ? member.name : 'member';
 
-            link.download = `${memberName}_${dateStr}.png`;
-            link.href = dataUrl;
-            link.click();
+              link.download = `${memberName}_${dateStr}.png`;
+              link.href = dataUrl;
+              link.click();
+            }
 
-            showToast('画像を保存しました');
-            setTimeout(hideToast, 2000);
+            showToast('画像を別タブで開きました（長押しで保存）');
+            setTimeout(hideToast, 3000);
           })
           .catch((error) => {
             mainAppContainer.style.height = origMainHeight;
