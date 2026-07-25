@@ -22,6 +22,7 @@
 
     body {
       font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      touch-action: pan-y;
     }
 
     ::-webkit-scrollbar {
@@ -75,6 +76,27 @@
       background-clip: padding-box;
       -webkit-mask-image: -webkit-radial-gradient(white, black);
     }
+
+    /* ドラッグ＆ドロップ用スタイル */
+    .draggable-item {
+      transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      touch-action: none;
+    }
+    .draggable-item.dragging {
+      opacity: 0.85;
+      background-color: #ffffff !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+      transform: scale(1.02);
+      z-index: 50;
+      position: relative;
+      border-radius: 1rem;
+    }
+    .drag-over-top {
+      border-top: 3px solid #6366f1 !important;
+    }
+    .drag-over-bottom {
+      border-bottom: 3px solid #6366f1 !important;
+    }
   </style>
 </head>
 <body class="app-bg h-screen font-sans antialiased text-slate-800 flex items-center justify-center p-0 sm:p-4">
@@ -117,14 +139,14 @@
 
       <!-- メンバー一覧 -->
       <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="memberList">
-        <!-- JSで動的描画 -->
+        <!-- JSで動적描画 -->
       </div>
     </div>
 
     <!-- ==================== 画面2：イベントトーク一覧 ==================== -->
     <div id="screen-events" class="screen">
       <!-- ヘッダー（固定） -->
-      <div class="p-4 flex items-center justify-between relative shrink-0 z-10">
+      <div class="p-4 bg-transparent flex items-center justify-between relative shrink-0 z-10">
         <button onclick="switchScreen('screen-members')" class="text-slate-600 hover:text-slate-900 text-lg px-2">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
@@ -153,7 +175,7 @@
     <!-- ==================== 画面3：トークルーム ==================== -->
     <div id="screen-chat" class="screen">
       <!-- ヘッダー（固定） -->
-      <div class="p-4 flex items-center justify-between relative shrink-0 z-10">
+      <div class="p-4 bg-transparent flex items-center justify-between relative shrink-0 z-10">
         <button onclick="switchScreen('screen-events')" class="text-slate-600 hover:text-slate-900 text-lg px-2">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
@@ -166,7 +188,7 @@
       <!-- キャプチャ対象エリア -->
       <div id="captureArea" class="flex-1 flex flex-col min-h-0 app-bg overflow-hidden">
         <!-- イベントタイトル（カレンダーアイコン付き） -->
-        <div class="pt-1 pb-3 px-4 shrink-0 bg-transparent flex items-center justify-between mx-3">
+        <div class="pt-3 pb-2 px-4 shrink-0 bg-transparent flex items-center justify-between mx-3">
           <div class="flex items-center gap-2.5 min-w-0">
             <div class="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full bg-slate-200/80 shrink-0 flex items-center justify-center text-slate-600">
               <!-- カレンダーアイコン（SVG） -->
@@ -189,7 +211,7 @@
       </div>
 
       <!-- メッセージ入力欄（固定） -->
-      <div class="px-3 pt-4 pb-5 pl-4 pr-4 bg-transparent flex items-center gap-2 shrink-0 z-10">
+      <div class="px-3 pt-4 pb-6 pl-4 pr-4 bg-transparent flex items-center gap-2 shrink-0 z-10">
         <!-- 送信者切替ボタン -->
         <button id="senderToggleBtn" onclick="toggleSenderMode()" class="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm shrink-0 transition bg-white text-xs font-bold text-slate-700">
           <span id="senderToggleLabel">メンバー</span>
@@ -315,12 +337,6 @@
 
   <!-- コンテキストメニュー（メッセージ用） -->
   <div id="msgContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-32 overflow-hidden select-none">
-    <button onclick="contextAction('up')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-chevron-up text-slate-400 w-4"></i> 上へ移動
-    </button>
-    <button onclick="contextAction('down')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-chevron-down text-slate-400 w-4"></i> 下へ移動
-    </button>
     <button onclick="contextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
     </button>
@@ -331,12 +347,6 @@
 
   <!-- コンテキストメニュー（メンバーリスト用） -->
   <div id="memberContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden select-none">
-    <button onclick="memberContextAction('up')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-chevron-up text-slate-400 w-4"></i> 上へ移動
-    </button>
-    <button onclick="memberContextAction('down')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-chevron-down text-slate-400 w-4"></i> 下へ移動
-    </button>
     <button onclick="memberContextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
     </button>
@@ -347,12 +357,6 @@
 
   <!-- コンテキストメニュー（イベントリスト用） -->
   <div id="eventContextMenu" class="fixed hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-36 overflow-hidden select-none">
-    <button onclick="eventContextAction('up')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-chevron-up text-slate-400 w-4"></i> 上へ移動
-    </button>
-    <button onclick="eventContextAction('down')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
-      <i class="fa-solid fa-chevron-down text-slate-400 w-4"></i> 下へ移動
-    </button>
     <button onclick="eventContextAction('edit')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
       <i class="fa-solid fa-pen text-slate-400 w-4"></i> 編集
     </button>
@@ -376,9 +380,16 @@
     let selectedMsgIdForContext = null;
     let selectedMemberIdForContext = null;
     let selectedEventIdForContext = null;
-    let longTouchTimer = null;
-    let memberLongTouchTimer = null;
-    let eventLongTouchTimer = null;
+
+    // ドラッグ＆ドロップ関連の状態変数
+    let activeDragType = null; // 'member', 'event', 'message'
+    let dragSrcId = null;
+    let dragElement = null;
+    let placeholderElement = null;
+    let touchHoldTimer = null;
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let currentX = 0, currentY = 0;
 
     function saveData() {
       localStorage.setItem('idol_talk_members', JSON.stringify(membersData));
@@ -437,19 +448,18 @@
 
       filtered.forEach(member => {
         const item = document.createElement('div');
-        item.className = 'py-3 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none';
+        item.className = 'py-3 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none draggable-item';
+        item.dataset.id = member.id;
+        item.dataset.type = 'member';
 
-        item.setAttribute('oncontextmenu', `openMemberContextMenu(event, '${member.id}')`);
-        item.setAttribute('ontouchstart', `handleMemberTouchStart(event, '${member.id}')`);
-        item.setAttribute('ontouchend', `handleMemberTouchEnd()`);
-        item.setAttribute('ontouchmove', `handleMemberTouchMove()`);
+        setupDragAndDropEvents(item, 'member', member.id);
 
         item.innerHTML = `
-          <div class="flex items-center gap-3.5 flex-1 min-w-0" onclick="selectMember('${member.id}')">
-            <img src="${member.avatar}" crossorigin="anonymous" class="w-12 h-12 rounded-full object-cover shrink-0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">
-            <div class="truncate">
-              <h3 class="text-base font-bold text-slate-800 truncate">${escapeHtml(member.name)}</h3>
-              <p class="text-xs text-slate-500 truncate">${escapeHtml(member.role)}</p>
+          <div class="flex items-center gap-3.5 flex-1 min-w-0 pointer-events-none" onclick="selectMember('${member.id}')">
+            <img src="${member.avatar}" crossorigin="anonymous" class="w-12 h-12 rounded-full object-cover shrink-0 pointer-events-none" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">
+            <div class="truncate pointer-events-none">
+              <h3 class="text-base font-bold text-slate-800 truncate pointer-events-none">${escapeHtml(member.name)}</h3>
+              <p class="text-xs text-slate-500 truncate pointer-events-none">${escapeHtml(member.role)}</p>
             </div>
           </div>
           <div class="flex items-center gap-1.5 ml-2 shrink-0">
@@ -458,6 +468,13 @@
             </button>
           </div>
         `;
+
+        // クリックイベントの代替（ドラッグと誤爆しないための制御）
+        item.addEventListener('click', (e) => {
+          if (item.dataset.hasDragged === 'true') return;
+          if (e.target.closest('button')) return;
+          selectMember(member.id);
+        });
 
         listEl.appendChild(item);
       });
@@ -583,28 +600,27 @@
         const placeAndSection = [placeText, sectionText].filter(Boolean).join(' ') || '場所未設定';
 
         const item = document.createElement('div');
-        item.className = 'py-3.5 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none';
+        item.className = 'py-3.5 px-3 flex items-center justify-between cursor-pointer hover:bg-white/40 rounded-xl transition group select-none draggable-item';
+        item.dataset.id = event.id;
+        item.dataset.type = 'event';
 
-        item.setAttribute('oncontextmenu', `openEventContextMenu(event, '${event.id}')`);
-        item.setAttribute('ontouchstart', `handleEventTouchStart(event, '${event.id}')`);
-        item.setAttribute('ontouchend', `handleEventTouchEnd()`);
-        item.setAttribute('ontouchmove', `handleEventTouchMove()`);
+        setupDragAndDropEvents(item, 'event', event.id);
 
         item.innerHTML = `
-          <div class="flex items-center gap-3.5 flex-1 min-w-0" onclick="selectEvent('${event.id}')">
-            <div class="w-12 h-12 rounded-full bg-slate-200/80 shrink-0 flex flex-col items-center justify-center text-slate-600">
-              <svg class="w-4 h-4 fill-current" viewBox="0 0 448 512">
+          <div class="flex items-center gap-3.5 flex-1 min-w-0 pointer-events-none" onclick="selectEvent('${event.id}')">
+            <div class="w-12 h-12 rounded-full bg-slate-200/80 shrink-0 flex flex-col items-center justify-center text-slate-600 pointer-events-none">
+              <svg class="w-4 h-4 fill-current pointer-events-none" viewBox="0 0 448 512">
                 <path d="M152 64H296V24C296 10.75 306.7 0 320 0C333.3 0 344 10.75 344 24V64H384C419.3 64 448 92.65 448 128V416C448 451.3 419.3 480 384 480H64C28.65 480 0 451.3 0 416V128C0 92.65 28.65 64 64 64H104V24C104 10.75 114.7 0 128 0C141.3 0 152 10.75 152 24V64ZM400 192H48V416C48 424.8 55.16 432 64 432H384C392.8 432 400 424.8 400 416V192ZM384 112H64C55.16 112 48 119.2 48 128V144H400V128C400 119.2 392.8 112 384 112Z"/>
               </svg>
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between mb-0.5">
-                <h3 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(event.date || '日付未設定')}</h3>
-                <div class="text-right text-xs text-slate-500 shrink-0 leading-tight">
+            <div class="flex-1 min-w-0 pointer-events-none">
+              <div class="flex items-center justify-between mb-0.5 pointer-events-none">
+                <h3 class="text-sm font-bold text-slate-800 truncate pointer-events-none">${escapeHtml(event.date || '日付未設定')}</h3>
+                <div class="text-right text-xs text-slate-500 shrink-0 leading-tight pointer-events-none">
                   ${event.count ? `<span class="bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md"><i class="fa-solid fa-ticket text-[10px] mr-1"></i>${escapeHtml(event.count)}枚</span>` : ''}
                 </div>
               </div>
-              <p class="text-sm text-slate-600 truncate">${event.place ? '<i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>' : ''}${escapeHtml(placeAndSection)}</p>
+              <p class="text-sm text-slate-600 truncate pointer-events-none">${event.place ? '<i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>' : ''}${escapeHtml(placeAndSection)}</p>
             </div>
           </div>
           <div class="flex items-center gap-1.5 ml-2 shrink-0">
@@ -613,6 +629,12 @@
             </button>
           </div>
         `;
+
+        item.addEventListener('click', (e) => {
+          if (item.dataset.hasDragged === 'true') return;
+          if (e.target.closest('button')) return;
+          selectEvent(event.id);
+        });
 
         listEl.appendChild(item);
       });
@@ -744,31 +766,34 @@
         const prev = event.messages[index-1];
         const isContinue = prev && prev.sender==='them' && msg.sender==='them';
         const msgEl = document.createElement('div');
+        msgEl.dataset.id = msg.id;
+        msgEl.dataset.type = 'message';
+        msgEl.className = 'draggable-item';
 
-        const eventHandlers = `
-          oncontextmenu="openContextMenu(event, '${msg.id}')"
-          ontouchstart="handleTouchStart(event, '${msg.id}')"
-          ontouchend="handleTouchEnd()"
-          ontouchmove="handleTouchMove()"
-        `;
+        setupDragAndDropEvents(msgEl, 'message', msg.id);
 
         if (msg.sender === 'topic') {
-          msgEl.className = 'flex justify-center items-center my-2 select-none cursor-pointer';
-          msgEl.innerHTML = `<div ${eventHandlers} class="topic-bubble text-xs py-1.5 px-4 w-fit max-w-[85%] text-center shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>`;
+          msgEl.classList.add('flex', 'justify-center', 'items-center', 'my-2', 'select-none', 'cursor-pointer');
+          msgEl.innerHTML = `<div class="topic-bubble text-xs py-1.5 px-4 w-fit max-w-[85%] text-center shadow-sm chat-bubble-text pointer-events-none">${escapeHtml(msg.text)}</div>`;
         } else if (msg.sender === 'me') {
-          msgEl.className = 'flex justify-end my-1.5 select-none cursor-pointer';
-          msgEl.innerHTML = `<div ${eventHandlers} class="w-fit max-w-[75%] bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tr-none shadow-sm text-left chat-bubble-text">${escapeHtml(msg.text)}</div>`;
+          msgEl.classList.add('flex', 'justify-end', 'my-1.5', 'select-none', 'cursor-pointer');
+          msgEl.innerHTML = `<div class="w-fit max-w-[75%] bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tr-none shadow-sm text-left chat-bubble-text pointer-events-none">${escapeHtml(msg.text)}</div>`;
         } else {
-          msgEl.className = 'select-none cursor-pointer';
+          msgEl.classList.add('select-none', 'cursor-pointer');
           msgEl.innerHTML = `
-          <div class="flex items-start my-1.5 gap-2">
-            ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5">`}
-            <div class="w-fit max-w-[75%]">
-              ${isContinue ? '' : `<div class="text-[11px] text-slate-500 mb-0.5 ml-1 font-medium">${escapeHtml(member.name)}</div>`}
-              <div ${eventHandlers} class="bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tl-none shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>
+          <div class="flex items-start my-1.5 gap-2 pointer-events-none">
+            ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5 pointer-events-none">`}
+            <div class="w-fit max-w-[75%] pointer-events-none">
+              ${isContinue ? '' : `<div class="text-[11px] text-slate-500 mb-0.5 ml-1 font-medium pointer-events-none">${escapeHtml(member.name)}</div>`}
+              <div class="bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tl-none shadow-sm chat-bubble-text pointer-events-none">${escapeHtml(msg.text)}</div>
             </div>
           </div>`;
         }
+
+        msgEl.addEventListener('click', (e) => {
+          if (msgEl.dataset.hasDragged === 'true') return;
+          openMsgEditModal(msg.id);
+        });
 
         messagesContainer.appendChild(msgEl);
       });
@@ -777,111 +802,191 @@
       updateSenderToggleUI();
     }
 
-    function exportChatImage() {
-      const captureElement = document.getElementById('captureArea');
-      const mainAppContainer = document.getElementById('mainAppContainer');
-      const chatScreen = document.getElementById('screen-chat');
-      if (!captureElement) return;
+    // 汎用3Dタッチ風ドラッグ＆ドロップ実装
+    function setupDragAndDropEvents(element, type, id) {
+      const startDragHandler = (clientX, clientY, targetElement) => {
+        touchHoldTimer = setTimeout(() => {
+          isDragging = true;
+          activeDragType = type;
+          dragSrcId = id;
+          dragElement = targetElement;
+          dragElement.classList.add('dragging');
+          dragElement.dataset.hasDragged = 'true';
 
-      showToast('画像を生成中...');
-
-      const messagesContainer = document.getElementById('chatMessages');
-
-      const origMainHeight = mainAppContainer.style.height;
-      const origMainOverflow = mainAppContainer.style.overflow;
-      const origScreenHeight = chatScreen.style.height;
-      const origScreenOverflow = chatScreen.style.overflow;
-      
-      const origCaptureHeight = captureElement.style.height;
-      const origCaptureOverflow = captureElement.style.overflow;
-      const origMsgHeight = messagesContainer.style.height;
-      const origMsgOverflow = messagesContainer.style.overflow;
-
-      mainAppContainer.style.height = 'auto';
-      mainAppContainer.style.overflow = 'visible';
-      chatScreen.style.height = 'auto';
-      chatScreen.style.overflow = 'visible';
-
-      captureElement.style.height = 'auto';
-      captureElement.style.overflow = 'visible';
-
-      messagesContainer.style.height = messagesContainer.scrollHeight + 'px';
-      messagesContainer.style.overflow = 'visible';
-
-      setTimeout(() => {
-        htmlToImage.toPng(captureElement, { 
-          cacheBust: true, 
-          pixelRatio: 2,
-          fontEmbedCSS: '',
-          filter: (node) => {
-            return node.tagName !== 'SCRIPT';
+          // 触覚フィードバック（対応デバイスのみ）
+          if (navigator.vibrate) {
+            navigator.vibrate(50);
           }
-        })
-          .then((dataUrl) => {
-            mainAppContainer.style.height = origMainHeight;
-            mainAppContainer.style.overflow = origMainOverflow;
-            chatScreen.style.height = origScreenHeight;
-            chatScreen.style.overflow = origScreenOverflow;
+        }, 350); // 350ms長押しで「持った」状態に
+      };
 
-            captureElement.style.height = origCaptureHeight;
-            captureElement.style.overflow = origCaptureOverflow;
+      // マウスイベント
+      element.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // 左クリックのみ
+        if (e.target.closest('button')) return; // ボタン押下時は除外
+        startX = e.clientX;
+        startY = e.clientY;
+        element.dataset.hasDragged = 'false';
+        startDragHandler(e.clientX, e.clientY, element);
+      });
 
-            messagesContainer.style.height = origMsgHeight;
-            messagesContainer.style.overflow = origMsgOverflow;
-
-            hideToast();
-
-            const modal = document.getElementById('imagePreviewModal');
-            const previewImg = document.getElementById('previewImageElement');
-            previewImg.src = dataUrl;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-          })
-          .catch((error) => {
-            mainAppContainer.style.height = origMainHeight;
-            mainAppContainer.style.overflow = origMainOverflow;
-            chatScreen.style.height = origScreenHeight;
-            chatScreen.style.overflow = origScreenOverflow;
-
-            captureElement.style.height = origCaptureHeight;
-            captureElement.style.overflow = origCaptureOverflow;
-
-            messagesContainer.style.height = origMsgHeight;
-            messagesContainer.style.overflow = origMsgOverflow;
-
-            console.error('oops, something went wrong!', error);
-            showToast('画像の保存に失敗しました');
-            setTimeout(hideToast, 2000);
-          });
-      }, 100);
+      // タッチイベント
+      element.addEventListener('touchstart', (e) => {
+        if (e.target.closest('button')) return;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        element.dataset.hasDragged = 'false';
+        startDragHandler(touch.clientX, touch.clientY, element);
+      }, { passive: true });
     }
 
-    function closeImagePreviewModal() {
-      const modal = document.getElementById('imagePreviewModal');
-      modal.classList.remove('flex');
-      modal.classList.add('hidden');
+    // グローバルなマウス・タッチ移動・終了監視
+    window.addEventListener('mousemove', (e) => {
+      handleMove(e.clientX, e.clientY, e.target);
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!isDragging && touchHoldTimer) {
+        const touch = e.touches[0];
+        if (Math.hypot(touch.clientX - startX, touch.clientY - startY) > 10) {
+          clearTimeout(touchHoldTimer);
+          touchHoldTimer = null;
+        }
+      }
+      if (isDragging && e.touches[0]) {
+        e.preventDefault(); // スクロールを抑制してドラッグに集中
+        handleMove(e.touches[0].clientX, e.touches[0].clientY, document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY));
+      }
+    }, { passive: false });
+
+    window.addEventListener('mouseup', () => {
+      endDrag();
+    });
+
+    window.addEventListener('touchend', () => {
+      endDrag();
+    });
+
+    function handleMove(clientX, clientY, targetUnderCursor) {
+      if (!touchHoldTimer && !isDragging) return;
+
+      if (!isDragging && touchHoldTimer) {
+        if (Math.hypot(clientX - startX, clientY - startY) > 12) {
+          clearTimeout(touchHoldTimer);
+          touchHoldTimer = null;
+        }
+        return;
+      }
+
+      if (isDragging && dragElement) {
+        // 最も近いdraggable-item要素を特定
+        const itemContainer = targetUnderCursor ? targetUnderCursor.closest('.draggable-item') : null;
+        
+        // すべてのインジケーターをクリア
+        document.querySelectorAll('.draggable-item').forEach(el => {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        if (itemContainer && itemContainer !== dragElement) {
+          const rect = itemContainer.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          if (clientY < midY) {
+            itemContainer.classList.add('drag-over-top');
+          } else {
+            itemContainer.classList.add('drag-over-bottom');
+          }
+        }
+      }
     }
 
-    function openContextMenu(e, msgId, posX, posY) {
-      if (e) e.preventDefault();
-      closeAllContextMenus();
-      selectedMsgIdForContext = msgId;
+    function endDrag() {
+      if (touchHoldTimer) {
+        clearTimeout(touchHoldTimer);
+        touchHoldTimer = null;
+      }
 
-      const menu = document.getElementById('msgContextMenu');
-      const x = posX !== undefined ? posX : e.clientX;
-      const y = posY !== undefined ? posY : e.clientY;
+      if (isDragging && dragElement) {
+        const overItem = document.querySelector('.drag-over-top, .drag-over-bottom');
+        if (overItem) {
+          const targetId = overItem.dataset.id;
+          const isBefore = overItem.classList.contains('drag-over-top');
+          
+          executeReorder(activeDragType, dragSrcId, targetId, isBefore);
+        }
 
-      const menuWidth = 130;
-      const menuHeight = 150;
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
+        dragElement.classList.remove('dragging');
+        document.querySelectorAll('.draggable-item').forEach(el => {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
 
-      const left = (x + menuWidth > windowWidth) ? windowWidth - menuWidth - 10 : x;
-      const top = (y + menuHeight > windowHeight) ? windowHeight - menuHeight - 10 : y;
+        // クリックイベントの誤発火を防ぐフラグの保持と後始末
+        setTimeout(() => {
+          if (dragElement) dragElement.dataset.hasDragged = 'false';
+          dragElement = null;
+        }, 100);
+      }
 
-      menu.style.left = `${left}px`;
-      menu.style.top = `${top}px`;
-      menu.classList.remove('hidden');
+      isDragging = false;
+      activeDragType = null;
+      dragSrcId = null;
+    }
+
+    function executeReorder(type, srcId, targetId, isBefore) {
+      if (srcId === targetId) return;
+
+      if (type === 'member') {
+        const srcIdx = membersData.findIndex(m => m.id === srcId);
+        const targetIdx = membersData.findIndex(m => m.id === targetId);
+        if (srcIdx === -1 || targetIdx === -1) return;
+
+        const [moved] = membersData.splice(srcIdx, 1);
+        let newIdx = membersData.findIndex(m => m.id === targetId);
+        if (!isBefore) newIdx += 1;
+        membersData.splice(newIdx, 0, moved);
+
+        saveData();
+        renderMemberList(document.getElementById('searchMember').value.trim());
+        showToast('メンバーの並び替えを保存しました');
+        setTimeout(hideToast, 1500);
+
+      } else if (type === 'event') {
+        const member = membersData.find(m => m.id === currentMemberId);
+        if (!member) return;
+        const srcIdx = member.events.findIndex(e => e.id === srcId);
+        const targetIdx = member.events.findIndex(e => e.id === targetId);
+        if (srcIdx === -1 || targetIdx === -1) return;
+
+        const [moved] = member.events.splice(srcIdx, 1);
+        let newIdx = member.events.findIndex(e => e.id === targetId);
+        if (!isBefore) newIdx += 1;
+        member.events.splice(newIdx, 0, moved);
+
+        saveData();
+        renderEventList(document.getElementById('searchEvent').value.trim());
+        showToast('イベントの並び替えを保存しました');
+        setTimeout(hideToast, 1500);
+
+      } else if (type === 'message') {
+        const member = membersData.find(m => m.id === currentMemberId);
+        if (!member) return;
+        const event = member.events.find(e => e.id === currentEventId);
+        if (!event) return;
+
+        const srcIdx = event.messages.findIndex(m => m.id === srcId);
+        const targetIdx = event.messages.findIndex(m => m.id === targetId);
+        if (srcIdx === -1 || targetIdx === -1) return;
+
+        const [moved] = event.messages.splice(srcIdx, 1);
+        let newIdx = event.messages.findIndex(m => m.id === targetId);
+        if (!isBefore) newIdx += 1;
+        event.messages.splice(newIdx, 0, moved);
+
+        saveData();
+        renderChatMessages();
+        showToast('メッセージの並び替えを保存しました');
+        setTimeout(hideToast, 1500);
+      }
     }
 
     function openMemberContextMenu(e, memberId, posX, posY) {
@@ -894,7 +999,7 @@
       const y = posY !== undefined ? posY : e.clientY;
 
       const menuWidth = 140;
-      const menuHeight = 150;
+      const menuHeight = 120;
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
@@ -916,7 +1021,7 @@
       const y = posY !== undefined ? posY : e.clientY;
 
       const menuWidth = 140;
-      const menuHeight = 150;
+      const menuHeight = 120;
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
@@ -940,9 +1045,7 @@
       const msgId = selectedMsgIdForContext;
       closeAllContextMenus();
 
-      if (type === 'up') moveMessage(msgId, 'up');
-      else if (type === 'down') moveMessage(msgId, 'down');
-      else if (type === 'edit') openMsgEditModal(msgId);
+      if (type === 'edit') openMsgEditModal(msgId);
       else if (type === 'delete') deleteMessage(msgId);
     }
 
@@ -951,9 +1054,7 @@
       const memberId = selectedMemberIdForContext;
       closeAllContextMenus();
 
-      if (type === 'up' || type === 'down') {
-        moveMember(memberId, type);
-      } else if (type === 'edit') {
+      if (type === 'edit') {
         openMemberModal(memberId);
       } else if (type === 'delete') {
         deleteMember(memberId);
@@ -965,100 +1066,11 @@
       const eventId = selectedEventIdForContext;
       closeAllContextMenus();
 
-      if (type === 'up' || type === 'down') {
-        moveEvent(eventId, type);
-      } else if (type === 'edit') {
+      if (type === 'edit') {
         openEventModal(eventId);
       } else if (type === 'delete') {
         deleteEvent(eventId);
       }
-    }
-
-    function moveMember(memberId, direction) {
-      const index = membersData.findIndex(m => m.id === memberId);
-      if (index === -1) return;
-
-      if (direction === 'up' && index > 0) {
-        const temp = membersData[index];
-        membersData[index] = membersData[index - 1];
-        membersData[index - 1] = temp;
-      } else if (direction === 'down' && index < membersData.length - 1) {
-        const temp = membersData[index];
-        membersData[index] = membersData[index + 1];
-        membersData[index + 1] = temp;
-      } else {
-        return;
-      }
-
-      saveData();
-      renderMemberList(document.getElementById('searchMember').value.trim());
-    }
-
-    function moveEvent(eventId, direction) {
-      const member = membersData.find(m => m.id === currentMemberId);
-      if (!member) return;
-      const index = member.events.findIndex(e => e.id === eventId);
-      if (index === -1) return;
-
-      if (direction === 'up' && index > 0) {
-        const temp = member.events[index];
-        member.events[index] = member.events[index - 1];
-        member.events[index - 1] = temp;
-      } else if (direction === 'down' && index < member.events.length - 1) {
-        const temp = member.events[index];
-        member.events[index] = member.events[index + 1];
-        member.events[index + 1] = temp;
-      } else {
-        return;
-      }
-
-      saveData();
-      renderEventList(document.getElementById('searchEvent').value.trim());
-    }
-
-    function handleTouchStart(e, msgId) {
-      longTouchTimer = setTimeout(() => {
-        const touch = e.touches[0];
-        openContextMenu(null, msgId, touch.clientX, touch.clientY);
-      }, 500);
-    }
-
-    function handleTouchEnd() {
-      if (longTouchTimer) clearTimeout(longTouchTimer);
-    }
-
-    function handleTouchMove() {
-      if (longTouchTimer) clearTimeout(longTouchTimer);
-    }
-
-    function handleMemberTouchStart(e, memberId) {
-      memberLongTouchTimer = setTimeout(() => {
-        const touch = e.touches[0];
-        openMemberContextMenu(null, memberId, touch.clientX, touch.clientY);
-      }, 500);
-    }
-
-    function handleMemberTouchEnd() {
-      if (memberLongTouchTimer) clearTimeout(memberLongTouchTimer);
-    }
-
-    function handleMemberTouchMove() {
-      if (memberLongTouchTimer) clearTimeout(memberLongTouchTimer);
-    }
-
-    function handleEventTouchStart(e, eventId) {
-      eventLongTouchTimer = setTimeout(() => {
-        const touch = e.touches[0];
-        openEventContextMenu(null, eventId, touch.clientX, touch.clientY);
-      }, 500);
-    }
-
-    function handleEventTouchEnd() {
-      if (eventLongTouchTimer) clearTimeout(eventLongTouchTimer);
-    }
-
-    function handleEventTouchMove() {
-      if (eventLongTouchTimer) clearTimeout(eventLongTouchTimer);
     }
 
     document.addEventListener('click', (e) => {
@@ -1085,29 +1097,6 @@
       renderChatMessages();
     }
 
-    function moveMessage(msgId, direction) {
-      const member = membersData.find(m => m.id === currentMemberId);
-      const event = member.events.find(e => e.id === currentEventId);
-      const index = event.messages.findIndex(m => m.id === msgId);
-
-      if (index === -1) return;
-
-      if (direction === 'up' && index > 0) {
-        const temp = event.messages[index];
-        event.messages[index] = event.messages[index - 1];
-        event.messages[index - 1] = temp;
-      } else if (direction === 'down' && index < event.messages.length - 1) {
-        const temp = event.messages[index];
-        event.messages[index] = event.messages[index + 1];
-        event.messages[index + 1] = temp;
-      } else {
-        return;
-      }
-
-      saveData();
-      renderChatMessages();
-    }
-
     function openMsgEditModal(msgId) {
       const member = membersData.find(m => m.id === currentMemberId);
       const event = member.events.find(e => e.id === currentEventId);
@@ -1115,6 +1104,7 @@
 
       if (!msg) return;
 
+      selectedMsgIdForContext = msgId;
       document.getElementById('editMsgId').value = msg.id;
       document.getElementById('editMsgSender').value = msg.sender;
       document.getElementById('editMsgText').value = msg.text;
