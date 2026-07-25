@@ -42,6 +42,9 @@
     .topic-bubble {
       background-color: var(--topic-bg);
       color: #ffffff;
+      border-radius: 9999px;
+      overflow: hidden;
+      background-clip: padding-box;
     }
 
     .screen {
@@ -62,6 +65,17 @@
       word-break: break-word;
       text-align: left;
       white-space: pre-wrap;
+    }
+
+    /* 画像化や角丸の表示で影や色ズレ（隙間）が発生するのを防ぐ共通修正 */
+    .rounded-2xl, .rounded-xl, .rounded-full {
+      background-clip: padding-box;
+    }
+    
+    .chat-bubble-fix {
+      border-radius: 1rem;
+      overflow: hidden;
+      background-clip: padding-box;
     }
   </style>
 </head>
@@ -105,7 +119,7 @@
 
       <!-- メンバー一覧 -->
       <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="memberList">
-        <!-- JSで動的描画 -->
+        <!-- JSで動적描画 -->
       </div>
     </div>
 
@@ -145,7 +159,6 @@
         <button onclick="switchScreen('screen-events')" class="text-slate-600 hover:text-slate-900 text-lg px-2">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
-        <!-- タイトル部分：text-xlに拡大 -->
         <h1 class="text-lg font-bold text-slate-800 absolute left-1/2 -translate-x-1/2" id="chatScreenTitle">トークルーム</h1>
         <button onclick="exportChatImage()" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-600 hover:bg-white/70 hover:text-slate-900 transition" aria-label="トーク画像を保存">
           <i class="fa-solid fa-camera"></i>
@@ -184,7 +197,7 @@
           <span id="senderToggleLabel">メンバー</span>
         </button>
 
-        <!-- 入力フィールド：高さを高めに設定 (py-3.5) -->
+        <!-- 入力フィールド -->
         <input type="text" id="messageInput" placeholder="メッセージを入力..." class="flex-1 bg-slate-200/70 text-sm px-4 py-3.5 rounded-full focus:bg-white focus:outline-none transition">
 
         <button onclick="sendMessage()" class="text-slate-600 hover:text-slate-800 px-2 text-xl">
@@ -195,7 +208,7 @@
 
   </div>
 
-<!-- 画像プレビュー・保存モーダル（別タブを開かないための内蔵モーダル） -->
+  <!-- 画像プレビュー・保存モーダル -->
   <div id="imagePreviewModal" class="fixed inset-0 bg-black/80 hidden flex-col items-center justify-center p-2 sm:p-4 z-50">
     <div class="bg-white rounded-2xl w-full max-w-sm h-[90vh] p-4 flex flex-col shadow-2xl relative">
       <div class="flex items-center justify-between mb-2 shrink-0">
@@ -204,9 +217,7 @@
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
-      <p class="text-[11px] text-slate-500 mb-2 text-center shrink-0">画像を長押しして परिचालनするデバイスに合わせて保存してください。</p>
       
-      <!-- スクロールして全体を確認できるプレビュー領域 -->
       <div class="flex-1 overflow-y-auto bg-slate-100 rounded-xl p-2 flex justify-center min-h-0">
         <img id="previewImageElement" src="" alt="Generated Chat Image" class="w-full h-auto rounded shadow object-contain select-none pointer-events-auto">
       </div>
@@ -437,7 +448,7 @@
 
         item.innerHTML = `
           <div class="flex items-center gap-3.5 flex-1 min-w-0" onclick="selectMember('${member.id}')">
-            <img src="${member.avatar}" class="w-12 h-12 rounded-full object-cover shrink-0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">
+            <img src="${member.avatar}" crossorigin="anonymous" class="w-12 h-12 rounded-full object-cover shrink-0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';">
             <div class="truncate">
               <h3 class="text-base font-bold text-slate-800 truncate">${escapeHtml(member.name)}</h3>
               <p class="text-xs text-slate-500 truncate">${escapeHtml(member.role)}</p>
@@ -745,18 +756,18 @@
 
         if (msg.sender === 'topic') {
           msgEl.className = 'flex justify-center items-center my-2 select-none cursor-pointer';
-          msgEl.innerHTML = `<div ${eventHandlers} class="topic-bubble text-xs py-1.5 px-4 rounded-full w-fit max-w-[85%] text-center shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>`;
+          msgEl.innerHTML = `<div ${eventHandlers} class="topic-bubble text-xs py-1.5 px-4 w-fit max-w-[85%] text-center shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>`;
         } else if (msg.sender === 'me') {
           msgEl.className = 'flex justify-end my-1.5 select-none cursor-pointer';
-          msgEl.innerHTML = `<div ${eventHandlers} class="w-fit max-w-[75%] bg-white text-slate-800 text-sm py-2 px-4 rounded-2xl rounded-tr-none shadow-sm text-left chat-bubble-text">${escapeHtml(msg.text)}</div>`;
+          msgEl.innerHTML = `<div ${eventHandlers} class="w-fit max-w-[75%] bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tr-none shadow-sm text-left chat-bubble-text">${escapeHtml(msg.text)}</div>`;
         } else {
           msgEl.className = 'select-none cursor-pointer';
           msgEl.innerHTML = `
           <div class="flex items-start my-1.5 gap-2">
-            ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5">`}
+            ${isContinue ? '<div class="w-8 shrink-0"></div>' : `<img src="${member.avatar}" crossorigin="anonymous" class="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5">`}
             <div class="w-fit max-w-[75%]">
               ${isContinue ? '' : `<div class="text-[11px] text-slate-500 mb-0.5 ml-1 font-medium">${escapeHtml(member.name)}</div>`}
-              <div ${eventHandlers} class="bg-white text-slate-800 text-sm py-2 px-4 rounded-2xl rounded-tl-none shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>
+              <div ${eventHandlers} class="bg-white text-slate-800 text-sm py-2 px-4 chat-bubble-fix rounded-tl-none shadow-sm chat-bubble-text">${escapeHtml(msg.text)}</div>
             </div>
           </div>`;
         }
@@ -822,7 +833,6 @@
 
             hideToast();
 
-            // アプリ内にプレビューモーダルを表示して長押し保存させる
             const modal = document.getElementById('imagePreviewModal');
             const previewImg = document.getElementById('previewImageElement');
             previewImg.src = dataUrl;
@@ -1156,7 +1166,7 @@
 
       if (senderMode === 'them') {
         btn.className = "w-10 h-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm shrink-0 transition bg-white text-xs font-bold text-slate-700";
-        btn.innerHTML = member ? `<img src="${member.avatar}" class="w-full h-full object-cover">` : 'メンバー';
+        btn.innerHTML = member ? `<img src="${member.avatar}" crossorigin="anonymous" class="w-full h-full object-cover">` : 'メンバー';
       } else if (senderMode === 'me') {
         btn.className = "w-10 h-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm shrink-0 transition bg-[#f1f0e8] text-slate-500";
         btn.innerHTML = '<i class="fa-solid fa-user text-sm"></i>';
@@ -1174,7 +1184,6 @@
       };
       const jsonString = JSON.stringify(backup, null, 2);
 
-      // PCなど通常のダウンロードが使える環境用のフォールバック
       try {
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -1182,7 +1191,6 @@
         link.href = url;
         link.download = `member-talk-backup_${new Date().toISOString().slice(0, 10)}.json`;
         
-        // iOS以外やPCであればそのままクリック実行
         if (!navigator.userAgent.match(/iphone|ipad|ipod/i)) {
           link.click();
           URL.revokeObjectURL(url);
@@ -1191,15 +1199,13 @@
           return;
         }
       } catch (e) {
-        // エラー時はモーダル表示へフォールバック
+        // フォールバックへ
       }
 
-      // iOS（ホーム画面PWAなど）で確実に保存・エクスポートするためのモーダル表示
       showBackupExportModal(jsonString);
     }
 
     function showBackupExportModal(jsonString) {
-      // 既存のモーダルがあれば使い回し、なければ作成するモーダルを表示
       let modal = document.getElementById('backupExportModal');
       if (!modal) {
         modal = document.createElement('div');
@@ -1213,7 +1219,7 @@
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </div>
-            <p class="text-[11px] text-slate-500 mb-2 text-center shrink-0">以下のテキストをすべてコピーし、メモアプリなどに貼り付けて「.json」ファイルとして保存してください。</p>
+            <p class="text-[11px] text-slate-500 mb-2 text-center shrink-0">以下のテキストをコピーし、メモアプリなどに貼り付けて「.json」ファイルとして保存してください。</p>
             <textarea id="backupTextArea" readonly class="w-full h-48 bg-slate-100 text-xs p-2.5 rounded-xl font-mono text-slate-700 select-all focus:outline-none mb-3 shrink-0"></textarea>
             <div class="flex gap-2">
               <button onclick="navigator.clipboard.writeText(document.getElementById('backupTextArea').value); showToast('コピーしました！'); setTimeout(hideToast, 2000);" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition">
