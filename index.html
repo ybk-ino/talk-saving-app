@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231e293b'/><path d='M130 160h252c22 0 40 18 40 40v140c0 22-18 40-40 40H270l-70 60v-60h-70c-22 0-40-18-40-40V200c0-22 18-40 40-40z' fill='%23ffffff'/></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -72,17 +73,26 @@
     <!-- ==================== 画面1：メンバーリスト ==================== -->
     <div id="screen-members" class="screen active">
       <!-- ヘッダー -->
-      <div class="p-4 bg-transparent flex items-center justify-center relative">
-        <h1 class="text-lg font-bold text-slate-800">メンバー</h1>
-        <div class="absolute right-3 flex items-center gap-1">
-          <button onclick="exportBackup()" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-white/70 hover:text-slate-700 transition" aria-label="バックアップを書き出す">
-            <i class="fa-solid fa-file-export"></i>
+      <div class="p-4 bg-transparent flex items-center justify-between relative">
+        <div class="relative">
+          <button onclick="toggleGlobalMenu(event)" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-white/70 hover:text-slate-700 transition" aria-label="メニュー">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
           </button>
-          <button onclick="document.getElementById('backupImportInput').click()" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-white/70 hover:text-slate-700 transition" aria-label="バックアップを読み込む">
-            <i class="fa-solid fa-file-import"></i>
-          </button>
+          <!-- グローバルメニュー（ドロップダウン） -->
+          <div id="globalContextMenu" class="absolute left-0 mt-1 hidden bg-white rounded-xl shadow-xl py-1 z-50 text-xs w-52 overflow-hidden select-none border border-slate-100 whitespace-nowrap">
+            <button onclick="exportBackup(); closeAllContextMenus();" class="w-full text-left px-3 py-2.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
+              <i class="fa-solid fa-file-export text-slate-400 w-4"></i> バックアップを書き出す
+            </button>
+            <button onclick="document.getElementById('backupImportInput').click(); closeAllContextMenus();" class="w-full text-left px-3 py-2.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
+              <i class="fa-solid fa-file-import text-slate-400 w-4"></i> バックアップを読み込む
+            </button>
+          </div>
           <input type="file" id="backupImportInput" accept="application/json,.json" class="hidden" onchange="importBackup(event)">
         </div>
+        <h1 class="text-lg font-bold text-slate-800 absolute left-1/2 -translate-x-1/2">メンバー</h1>
+        <button onclick="openMemberModal()" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-600 hover:bg-white/70 hover:text-slate-900 transition" aria-label="メンバー追加">
+          <i class="fa-solid fa-plus"></i>
+        </button>
       </div>
 
       <!-- 検索バー -->
@@ -94,14 +104,9 @@
       </div>
 
       <!-- メンバー一覧 -->
-      <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-20" id="memberList">
+      <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="memberList">
         <!-- JSで動的描画 -->
       </div>
-
-      <!-- フローティング追加ボタン -->
-      <button onclick="openMemberModal()" class="absolute bottom-8 right-6 w-14 h-14 bg-white text-slate-800 rounded-full shadow-lg flex items-center justify-center text-2xl font-light hover:bg-slate-50 transition z-10">
-        <i class="fa-solid fa-plus text-slate-700"></i>
-      </button>
     </div>
 
     <!-- ==================== 画面2：イベントトーク一覧 ==================== -->
@@ -112,7 +117,9 @@
           <i class="fa-solid fa-chevron-left"></i>
         </button>
         <h1 class="text-lg font-bold text-slate-800 absolute left-1/2 -translate-x-1/2" id="eventScreenTitle">トークルーム</h1>
-        <div class="w-6"></div>
+        <button onclick="openEventModal()" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-600 hover:bg-white/70 hover:text-slate-900 transition" aria-label="イベント追加">
+          <i class="fa-solid fa-plus"></i>
+        </button>
       </div>
 
       <!-- 検索バー -->
@@ -126,14 +133,9 @@
       <div class="px-4 pt-2 text-xs font-semibold text-slate-500"></div>
 
       <!-- イベント一覧 -->
-      <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-20" id="eventRoomList">
+      <div class="flex-1 overflow-y-auto px-2 divide-y divide-slate-200/40 pb-4" id="eventRoomList">
         <!-- JSで動的描画 -->
       </div>
-
-      <!-- フローティング追加ボタン -->
-      <button onclick="openEventModal()" class="absolute bottom-8 right-6 w-14 h-14 bg-white text-slate-800 rounded-full shadow-lg flex items-center justify-center text-2xl font-light hover:bg-slate-50 transition z-10">
-        <i class="fa-solid fa-plus text-slate-700"></i>
-      </button>
     </div>
 
     <!-- ==================== 画面3：トークルーム ==================== -->
@@ -382,6 +384,13 @@
       if (screenId === 'screen-members') renderMemberList();
       if (screenId === 'screen-events') renderEventList();
       if (screenId === 'screen-chat') renderChatMessages();
+    }
+
+    function toggleGlobalMenu(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('globalContextMenu');
+      closeAllContextMenus();
+      menu.classList.toggle('hidden');
     }
 
     function renderMemberList(filter = '') {
@@ -891,6 +900,7 @@
       document.getElementById('msgContextMenu').classList.add('hidden');
       document.getElementById('memberContextMenu').classList.add('hidden');
       document.getElementById('eventContextMenu').classList.add('hidden');
+      document.getElementById('globalContextMenu').classList.add('hidden');
     }
 
     function contextAction(type) {
@@ -1023,10 +1033,12 @@
       const msgMenu = document.getElementById('msgContextMenu');
       const memberMenu = document.getElementById('memberContextMenu');
       const eventMenu = document.getElementById('eventContextMenu');
+      const globalMenu = document.getElementById('globalContextMenu');
 
       if ((msgMenu && !msgMenu.contains(e.target)) &&
           (memberMenu && !memberMenu.contains(e.target)) &&
-          (eventMenu && !eventMenu.contains(e.target))) {
+          (eventMenu && !eventMenu.contains(e.target)) &&
+          (globalMenu && !globalMenu.contains(e.target))) {
         closeAllContextMenus();
       }
     });
